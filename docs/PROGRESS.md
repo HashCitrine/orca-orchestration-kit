@@ -20,3 +20,15 @@
 변경 결정: Windows에서는 기존 POSIX 자격 증명 파일 구현을 억지로 재사용하지 않고 TYPESAFE_API_KEY를 사용한다. 모델 자동 목록 수집은 도구마다 지원이 달라 공통 CLI에 추측 구현하지 않고 스킬의 공식 도움말 기반 사전 점검으로 처리한다.
 
 변경 결정(Claude): 사용자가 bypass 유지를 선택했다. kit은 Claude 설정을 명시 명령 `claude-setup`으로만 바꾸고 Orca 앱 설정은 읽기만 한다.
+
+## 모델 라우팅 확장 (2026-10-30)
+진행 중: 프로필별 agent/model/effort, 검증 근거, 한 번 상향 제한, 테스트 및 실제 검증.
+
+## 모델·effort 라우팅 구현 결과 (2026-10-30)
+완료: route JSON CLI, 4개 기본 프로필, 로컬 재정의, 검증된 조합만 자동 배정, effort 인코딩 구분, 한 번 상향·high 제한, 명시 선택 대체 금지. 기존 설정과 Claude readiness 기능 보존.
+
+자동 테스트 12개 통과. 스킬 형식 검사 통과. 세 도구 설치 경로에 21개 관리 파일 갱신.
+실제 검증 Run: run_9a76019419ed. light(ctx_d2e183bace44), standard(ctx_5907b11961a3), deep(ctx_9c2324619844), review(ctx_389d5ef9c02d) 모두 launch.effective 일치 및 worker_done succeeded 확인 후 회수.
+로컬 model-evidence.json에 근거를 등록했으며 다른 컴퓨터로 동기화하지 않는다.
+
+한계: 검증은 작은 읽기 작업이며 모델 성능·비용 비교가 아니다. Claude 전용 모델 프로필은 이번 기본 매핑에 포함하지 않았으며 로컬 profiles로 추가 후 검증할 수 있다. Jev는 기존 분류 보조 지침을 사용하며 이번에 API 평가를 호출하지 않았다. 상향 횟수의 이전 route JSON 및 Dispatch 종료 확인은 조정자가 관리한다. 임의 JSON 변조를 막는 별도 서버 스케줄러는 아니다. 모델 목록 자동 수집은 구현하지 않았으며 공식 CLI/로컬 캐시 조회와 실제 실행으로 확인한다. OS별 실제 실행 범위는 기존 기록을 따른다.

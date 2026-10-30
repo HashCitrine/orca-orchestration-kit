@@ -3,5 +3,7 @@
   "skill_roots": {},
   "models": {},
   "efforts": {},
-  "max_workers": 2
+  "max_workers": 2,
+  "profiles": {},
+  "routes": {}
 }

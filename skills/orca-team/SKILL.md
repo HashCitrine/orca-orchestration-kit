@@ -16,12 +16,13 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - Claude가 조정자일 때 orca 명령에 권한 확인이 뜰 수 있다. 사용자 세션 설정의 문제이므로 조정자가 권한 설정을 임의로 바꾸지 않는다.
 
 ## 배분과 모델
-- 작은 작업은 직접 수행한다. 역할은 작업 특성·가용 기능·검증 근거에 따라 정하고 모델별 성능 서열을 가정하지 않는다.
-- CLI 이름 agy의 Orca 에이전트 ID는 antigravity다. claude/codex는 같은 ID다.
-- 모델·effort는 기본 생략한다. 사용자 또는 로컬 설정의 명시 재정의만 전달한다. effort는 검증된 모델 지원과 Orca 계약이 있을 때만 쓴다.
-- 모델 목록 기능은 현재 CLI help와 공식 문서로 확인한다. 지원하지 않으면 기본값을 사용하며 이름을 추측하지 않는다. 지정 모델이 사라지면 대안을 제시하고 선택을 받는다.
-- 도구·설정 변경 후 doctor를 다시 실행한다. 인터페이스가 바뀌면 작은 작업으로 검증한다. 실행 오류 후에는 기존 Dispatch 상태부터 확인하고 새 작업자를 중복 실행하지 않는다.
-- 실제 모델은 launch.requested가 아닌 launch.effective 또는 공급자 응답으로 확인한다. 알 수 없으면 '기본값 사용·실제 모델 미확인'으로 기록한다.
+- 작은 작업은 직접 처리한다. 분배 시 scripts/kit.py route --task-type simple|implementation|test|design|debug|review를 실행한다. 복잡하면 --complexity complex를 추가한다.
+- route의 status=ready일 때만 launch_args를 Orca worker-start에 전달한다. blocked이면 해당 모델을 자동 배정하지 말고 검증 또는 명시 선택을 요청한다. 새 모델 이름을 추측하지 않는다.
+- 현재 요청은 --profile/--agent/--model/--effort로 반영한다. 로컬 profiles/routes가 공통 정책보다 우선한다. 기존 models/efforts는 라우팅을 사용하지 않는 경우만 적용한다.
+- 모델 검증/상향/대체 규칙은 references/routing.md를 읽는다. AGY는 ID 내장 effort를 사용하면 별도 --effort를 전달하지 않는다.
+- 작업당 한 번만 quality 실패에 대해 high 이하로 상향한다. 먼저 기존 Dispatch의 확실한 settlement를 확인한다. 인증/네트워크/설치 실패는 모델 상향으로 해결하지 않는다.
+- 모델이 달라지면 새 작업자를 시작한다. 실제 모델은 launch.effective 또는 공급자 응답으로 확인하고 미확인이면 그대로 기록한다.
+- 같은 도구로 구현·검토를 수행하면 독립 도구 검토가 아님을 보고한다. Jev는 분류만 보조하며 지원 여부와 모델 우열을 결정하지 않는다.
 
 ## 작업 수명
 - Task마다 대상, 산출물, 제약, 수정 소유권, 검증 기준을 포함한다. references/task-template.md를 사용한다.

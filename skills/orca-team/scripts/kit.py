@@ -169,15 +169,125 @@ def doctor(home, config, state):
     write_json(state/'capabilities.json',report)
     return report
 
+
+def routing_defaults():
+    base = Path(__file__).resolve().parent
+    path = base/'routing.json'
+    if not path.exists():
+        path = base/'skills'/NAME/'scripts/routing.json'
+    return read_json(path, {})
+
+
+def routing_config(config):
+    default = routing_defaults()
+    if not isinstance(config.get('profiles', {}), dict) or not isinstance(config.get('routes', {}), dict):
+        raise ValueError('profiles and routes must be objects')
+    profiles = dict(default['profiles'])
+    # Override whole profiles to avoid retaining a different model's effort encoding.
+    profiles.update(config.get('profiles', {}))
+    routes = dict(default['routes'])
+    routes.update(config.get('routes', {}))
+    if not isinstance(config.get('profiles', {}), dict) or not isinstance(config.get('routes', {}), dict):
+        raise ValueError('profiles and routes must be objects')
+    for name, p in profiles.items():
+        if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade'}:
+            raise ValueError('invalid profile: '+name)
+        if p.get('agent') not in ('codex','claude','agy') or not isinstance(p.get('model'),str) or not p['model'].strip():
+            raise ValueError('profile requires agent and model: '+name)
+        if p.get('effort') not in ('low','medium','high','xhigh','max','ultra') or p.get('effort_mode') not in ('flag','embedded'):
+            raise ValueError('invalid effort or effort_mode: '+name)
+        if p['effort_mode']=='embedded' and not p['model'].endswith('-'+p['effort']):
+            raise ValueError('embedded effort conflicts with model: '+name)
+        for edge in ('fallback','upgrade'):
+            if p.get(edge) and p[edge] not in profiles:
+                raise ValueError('unknown '+edge+' profile: '+name)
+    if any(v not in profiles for v in routes.values()):
+        raise ValueError('route references unknown profile')
+    for start in profiles:
+        seen=set();current=start
+        while current:
+            if current in seen:
+                raise ValueError('fallback cycle: '+start)
+            seen.add(current);current=profiles[current].get('fallback')
+    return profiles,routes
+
+
+def profile_key(p):
+    return '|'.join(p[k] for k in ('agent','model','effort','effort_mode'))
+
+
+def tool_identity(agent, config):
+    executable=shutil.which(config.get('executables',{}).get(agent,agent))
+    if not executable:
+        return None
+    stat=Path(executable).stat()
+    return {'path':executable,'mtime_ns':stat.st_mtime_ns,'size':stat.st_size}
+
+
+def route(config, state, task_type, complexity='normal', profile=None, model=None,
+          effort=None, agent=None, prior=None, failure=None, settled=False, implementation_agent=None):
+    profiles,routes=routing_config(config)
+    explicit=bool(profile or model or effort or agent)
+    selected=profile or ('deep' if complexity=='complex' and task_type!='review' else routes.get(task_type))
+    if selected not in profiles:
+        raise ValueError('unknown task type/profile')
+    if prior:
+        if failure!='quality' or not settled or prior.get('upgrades',0)>=1 or prior.get('explicit'):
+            return {'status':'blocked','reason':'upgrade requires settled quality failure, no prior upgrade, and no explicit override'}
+        selected=profiles.get(prior.get('profile'),{}).get('upgrade')
+        if not selected:
+            return {'status':'blocked','reason':'no approved upgrade'}
+    evidence=read_json(state/'model-evidence.json',{})
+    rejected=[];seen=set()
+    while selected and selected not in seen:
+        seen.add(selected);p=dict(profiles[selected])
+        for key,value in [('agent',agent),('model',model),('effort',effort)]:
+            if value:p[key]=value
+        # Revalidate explicit overrides as complete profile definitions.
+        routing_config({'profiles':{'override':p}})
+        reason=None
+        if not explicit and p['effort'] not in ('low','medium','high'):
+            reason='automatic effort exceeds high'
+        record=evidence.get(profile_key(p),{})
+        try:
+            age=(datetime.now(timezone.utc)-datetime.fromisoformat(record['verified_at'])).total_seconds()
+            fresh=0 <= age <= 7*86400
+        except (KeyError,ValueError,TypeError):
+            fresh=False
+        if not reason and (not fresh or tool_identity(p['agent'],config) is None or record.get('identity')!=tool_identity(p['agent'],config) or not record.get('dispatch_id')):
+            reason='missing, stale, or changed-runtime smoke-test evidence'
+        if reason:
+            rejected.append({'profile':selected,'reason':reason})
+            if explicit or prior:break
+            selected=p.get('fallback');continue
+        argv=['--agent',{'agy':'antigravity'}.get(p['agent'],p['agent']),'--model',p['model']]
+        if p['effort_mode']=='flag':argv+=['--effort',p['effort']]
+        return {'status':'ready','profile':selected,**p,'launch_args':argv,
+                'reason':task_type+'/'+complexity,'rejected':rejected,'explicit':explicit,
+                'upgrades':1 if prior else 0,'actual_model':'unverified until launch receipt/provider response',
+                'review_independence': None if task_type!='review' else p['agent']!=implementation_agent}
+    return {'status':'blocked','reason':'no verified compatible profile','rejected':rejected}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup'])
+    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup','route'])
     parser.add_argument('--home',type=Path,default=Path.home(),help='isolated installation home for tests')
+    parser.add_argument('--task-type', choices=['simple','implementation','test','design','debug','review'])
+    parser.add_argument('--complexity', choices=['normal','complex'], default='normal')
+    parser.add_argument('--profile')
+    parser.add_argument('--model')
+    parser.add_argument('--effort')
+    parser.add_argument('--agent', choices=['codex','claude','agy'])
+    parser.add_argument('--prior', type=Path, help='previous route JSON for a quality-failure upgrade')
+    parser.add_argument('--failure', choices=['quality','auth','network','installation'])
+    parser.add_argument('--settled', action='store_true', help='coordinator has verified prior Dispatch settlement')
+    parser.add_argument('--implementation-agent', choices=['codex','claude','agy'])
     args=parser.parse_args()
     state=args.home/'.config/orca-orchestration-kit'
     try:
         config=read_json(state/'config.json',{})
-        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers'}:
+        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes'}:
             raise ValueError('unsupported configuration keys')
         if type(config.get('max_workers',2)) is not int or config.get('max_workers',2) not in (1,2):
             raise ValueError('max_workers must be 1 or 2')
@@ -191,7 +301,14 @@ def main():
         for agent in config.get('efforts',{}):
             if agent not in config.get('models',{}):
                 raise ValueError('effort requires an explicit model')
-        if args.command=='doctor':
+        routing_config(config)
+        if args.command=='route':
+            if not args.task_type:
+                raise ValueError('--task-type required')
+            result=route(config,state,args.task_type,args.complexity,args.profile,args.model,args.effort,
+                         args.agent,read_json(args.prior,{}) if args.prior else None,args.failure,
+                         args.settled,args.implementation_agent)
+        elif args.command=='doctor':
             result=doctor(args.home,config,state)
         elif args.command=='claude-setup':
             result=claude_setup(args.home)

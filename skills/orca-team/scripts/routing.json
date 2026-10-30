@@ -1,0 +1,40 @@
+{
+  "profiles": {
+    "light": {
+      "agent": "agy",
+      "model": "gemini-3.8-flash-low",
+      "effort": "low",
+      "effort_mode": "embedded",
+      "fallback": "standard",
+      "upgrade": "standard"
+    },
+    "standard": {
+      "agent": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "effort_mode": "flag",
+      "upgrade": "deep"
+    },
+    "deep": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "effort": "high",
+      "effort_mode": "flag"
+    },
+    "review": {
+      "agent": "agy",
+      "model": "gemini-4-argon-high",
+      "effort": "high",
+      "effort_mode": "embedded",
+      "fallback": "deep"
+    }
+  },
+  "routes": {
+    "simple": "light",
+    "implementation": "standard",
+    "test": "standard",
+    "design": "deep",
+    "debug": "deep",
+    "review": "review"
+  }
+}

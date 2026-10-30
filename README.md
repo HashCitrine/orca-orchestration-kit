@@ -36,3 +36,8 @@ Jev는 POSIX에서 `python3 skills/orca-team/scripts/jev.py configure`로 숨김
 - [검증](docs/VALIDATION.md)
 
 실제 런타임과 모델은 컴퓨터마다 다를 수 있습니다. 원격 분배와 자동 업데이트는 포함하지 않습니다.
+
+## 작업별 모델·effort 라우팅
+`python3 kit.py route --task-type implementation`으로 실행 없이 선택 결과를 확인합니다. simple/implementation/test/design/debug/review를 지원하며 복잡한 작업에는 `--complexity complex`를 사용합니다. 조정자는 ready 결과의 launch_args만 새 Orca 작업자에 전달합니다.
+
+[프로필·검증·상향 운영 안내](docs/ROUTING.md)를 참고하세요. 기존 기본 모델 상속은 비라우팅 실행에만 적용되며, orca-team 분배는 이제 검증된 프로필을 우선 사용합니다. 새 컴퓨터에서는 모델 검증 근거를 복사하지 않고 작은 작업부터 검증합니다.
