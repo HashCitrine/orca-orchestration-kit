@@ -119,3 +119,7 @@ AGY·Claude는 `--profile`에 검증한 프로필 이름을 사용하세요. 일
 ### Jev는 나중에 추가해도 됩니다
 
 처음에는 Jev 없이 진행하세요. 필요해지면 [Jev 설정 안내](../skills/orca-team/references/jev.md)에 따라 별도로 인증합니다. API 호출 전 전송할 발췌를 알려주며, 실패 시 일반 도구로 계속 진행합니다.
+
+## 선택 사항: 사용량에 맞춰 배정하기
+
+첫 프로필 검증 이후 `python3 kit.py usage refresh --agent codex`와 `python3 kit.py usage show`로 현재 조회 상태를 확인하세요. 전환할 대안은 [사용량 안내](USAGE.md)에 따라 로컬 설정에 추가합니다. 다른 도구의 사용량을 모른다면 그대로 미확인으로 두세요.

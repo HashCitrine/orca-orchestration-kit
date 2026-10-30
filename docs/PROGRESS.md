@@ -52,3 +52,12 @@
 - New Run run_3cc1edcbace3: Codex standard ctx_072b823518f8 and AGY light ctx_49dc417778ec succeeded. verify-profile registered live Orca evidence; repeated registration returned changed=false without extending completion time. Both workers were released.
 - Installed skill copies were updated. New Claude model verification and other-OS agent execution remain untested in this change.
 - setup writes only local observation metadata; it does not install external tools, log in, change permissions, or launch workers. Binary identity is checked using paths, size, timestamps and the pre-launch observation, not cryptographic attestation.
+
+## Quota-aware routing
+Completed: Codex read-only quota adapter, manual observations, reserve policy, tests and documentation.
+
+## Quota-aware routing implementation (2026-10-30)
+
+Implemented Codex read-only App Server quota refresh, manual observations, local account-scoped storage, five-minute expiry, reserve thresholds and quality-approved alternatives. Current real response supplied a weekly window; no five-hour window was inferred. No account identifiers or quota numbers are committed. Claude/AGY automatic collection remains unsupported. Cross-profile alternatives are opt-in configuration, not an inferred model performance ranking.
+
+Quota validation: 25 automated tests and skill validation passed. Codex account/rateLimits/read succeeded without inference work; missing time windows were not inferred. Local alternatives were configured, and installed skill copies were updated. Claude/AGY quota automation and precise usage reservations remain outside this implementation.

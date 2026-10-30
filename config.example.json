@@ -5,5 +5,31 @@
   "efforts": {},
   "max_workers": 2,
   "profiles": {},
-  "routes": {}
+  "routes": {},
+  "usage": {
+    "enabled": true,
+    "ttl_seconds": 300,
+    "conserve_percent": 20,
+    "protect_percent": 5,
+    "alternatives": {
+      "simple": [
+        "standard"
+      ],
+      "implementation": [
+        "review"
+      ],
+      "test": [
+        "review"
+      ],
+      "design": [
+        "review"
+      ],
+      "debug": [
+        "review"
+      ],
+      "review": [
+        "deep"
+      ]
+    }
+  }
 }

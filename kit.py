@@ -10,6 +10,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import usage
 
 NAME = 'orca-team'
 
@@ -190,7 +191,7 @@ def routing_config(config):
     if not isinstance(config.get('profiles', {}), dict) or not isinstance(config.get('routes', {}), dict):
         raise ValueError('profiles and routes must be objects')
     for name, p in profiles.items():
-        if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade'}:
+        if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade','quota_groups'}:
             raise ValueError('invalid profile: '+name)
         if p.get('agent') not in ('codex','claude','agy') or not isinstance(p.get('model'),str) or not p['model'].strip():
             raise ValueError('profile requires agent and model: '+name)
@@ -198,6 +199,8 @@ def routing_config(config):
             raise ValueError('invalid effort or effort_mode: '+name)
         if p['effort_mode']=='embedded' and not p['model'].endswith('-'+p['effort']):
             raise ValueError('embedded effort conflicts with model: '+name)
+        if 'quota_groups' in p and (not isinstance(p['quota_groups'],list) or any(not isinstance(g,str) or not g for g in p['quota_groups'])):
+            raise ValueError('invalid quota_groups')
         for edge in ('fallback','upgrade'):
             if p.get(edge) and p[edge] not in profiles:
                 raise ValueError('unknown '+edge+' profile: '+name)
@@ -224,7 +227,7 @@ def tool_identity(agent, config):
     return {'path':executable,'mtime_ns':stat.st_mtime_ns,'size':stat.st_size}
 
 
-def route(config, state, task_type, complexity='normal', profile=None, model=None,
+def route_base(config, state, task_type, complexity='normal', profile=None, model=None,
           effort=None, agent=None, prior=None, failure=None, settled=False, implementation_agent=None):
     profiles,routes=routing_config(config)
     explicit=bool(profile or model or effort or agent)
@@ -268,6 +271,13 @@ def route(config, state, task_type, complexity='normal', profile=None, model=Non
                 'review_independence': None if task_type!='review' else p['agent']!=implementation_agent}
     return {'status':'blocked','reason':'no verified compatible profile','rejected':rejected}
 
+
+
+def route(config, state, task_type, complexity='normal', profile=None, model=None,
+          effort=None, agent=None, prior=None, failure=None, settled=False, implementation_agent=None):
+    base=route_base(config,state,task_type,complexity,profile,model,effort,agent,prior,failure,settled,implementation_agent)
+    return usage.select(base,config,state,task_type,
+                        lambda name:route_base(config,state,task_type,complexity,profile=name,implementation_agent=implementation_agent))
 
 
 def orca_read(config, *args):
@@ -366,7 +376,7 @@ def verify_profile(config,state,name,dispatch_id):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup','route','setup','verify-profile'])
+    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup','route','setup','verify-profile','usage'])
     parser.add_argument('--home',type=Path,default=Path.home(),help='isolated installation home for tests')
     parser.add_argument('--task-type', choices=['simple','implementation','test','design','debug','review'])
     parser.add_argument('--complexity', choices=['normal','complex'], default='normal')
@@ -378,13 +388,19 @@ def main():
     parser.add_argument('--failure', choices=['quality','auth','network','installation'])
     parser.add_argument('--settled', action='store_true', help='coordinator has verified prior Dispatch settlement')
     parser.add_argument('--implementation-agent', choices=['codex','claude','agy'])
+    parser.add_argument('usage_action',nargs='?',choices=['refresh','show','set'])
+    parser.add_argument('--account',help='local non-personal account label for manual input')
+    parser.add_argument('--group')
+    parser.add_argument('--remaining',type=float)
+    parser.add_argument('--window-minutes',type=int)
+    parser.add_argument('--resets-at',type=float,help='Unix timestamp in seconds')
     parser.add_argument('--dispatch')
     parser.add_argument('--json',action='store_true',help='machine-readable setup report')
     args=parser.parse_args()
     state=args.home/'.config/orca-orchestration-kit'
     try:
         config=read_json(state/'config.json',{})
-        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes'}:
+        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','usage'}:
             raise ValueError('unsupported configuration keys')
         if type(config.get('max_workers',2)) is not int or config.get('max_workers',2) not in (1,2):
             raise ValueError('max_workers must be 1 or 2')
@@ -398,8 +414,20 @@ def main():
         for agent in config.get('efforts',{}):
             if agent not in config.get('models',{}):
                 raise ValueError('effort requires an explicit model')
-        routing_config(config)
-        if args.command=='setup':
+        profiles,_=routing_config(config)
+        usage_policy=usage.policy(config)
+        if any(name not in profiles for names in usage_policy['alternatives'].values() for name in names):
+            raise ValueError('unknown usage alternative profile')
+        if args.command=='usage':
+            if args.usage_action=='refresh':result=usage.refresh(state,config,args.agent or 'codex')
+            elif args.usage_action=='show':
+                result={'profiles':{name:usage.status(state,p,config) for name,p in profiles.items()}}
+            elif args.usage_action=='set':
+                if not args.agent or not args.account or not args.group or any(v is None for v in [args.remaining,args.window_minutes,args.resets_at]):
+                    raise ValueError('set requires --agent --account --group --remaining --window-minutes --resets-at')
+                result=usage.observe(state,args.agent,args.account,args.group,args.remaining,args.window_minutes,args.resets_at)
+            else:raise ValueError('usage requires refresh, show or set')
+        elif args.command=='setup':
             if not args.agent:raise ValueError('--agent required')
             result=setup(args.home,config,state,args.agent)
         elif args.command=='verify-profile':
@@ -420,7 +448,14 @@ def main():
             if args.command!='uninstall' and not (source/'SKILL.md').is_file():
                 raise ValueError('install/update must run from repository root kit.py')
             result=install(source,roots(args.home,config),state,args.command=='uninstall')
-        if args.command=='setup' and not args.json:
+        if args.command=='usage' and not args.json:
+            print('사용량: '+str(result.get('status',result.get('source','profile summary'))))
+            if 'reason' in result:print(result['reason'])
+            for name,entry in result.get('profiles',{}).items():
+                print(name+': '+entry['state'])
+                for w in entry['windows']:print('  '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at'])+' / '+w['source'])
+            for w in result.get('windows',[]):print(w['group']+': '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at']))
+        elif args.command=='setup' and not args.json:
             print('초기 환경 확인: '+result['agent'])
             for key,value in result['checks'].items():print('  '+key+': '+str(value))
             print('프로필: '+json.dumps(result['profiles'],ensure_ascii=False))

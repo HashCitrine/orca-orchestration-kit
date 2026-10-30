@@ -20,6 +20,10 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - Claude가 조정자일 때 orca 명령에 권한 확인이 뜰 수 있다. 사용자 세션 설정의 문제이므로 조정자가 권한 설정을 임의로 바꾸지 않는다.
 
 ## 배분과 모델
+- 새 작업자 배정 직전에 scripts/kit.py usage refresh --agent codex를 실행한다. 두 번째 작업자 배정 전에도 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
+- 잔여 20% 이하에서는 설정된 품질 적합 대안 중 다른 한도의 여유가 확인된 조합을 우선한다. 5% 이하에서는 새 배정을 보류한다. 미확인·오래된 정보는 여유 있다고 가정하지 않고 기존 정책을 유지한다.
+- usage.alternatives는 작업별 품질 적합 프로필의 명시 목록이다. 새 대안을 모델 이름이나 effort만으로 동등하다고 추측해 추가하지 않는다. API 조회는 계정 변경 또는 실패 시 이전 계정 관찰을 재사용하지 않는다.
+- 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 사용량 데이터는 Jev에 보내지 않는다.
 - 작은 작업은 직접 처리한다. 분배 시 scripts/kit.py route --task-type simple|implementation|test|design|debug|review를 실행한다. 복잡하면 --complexity complex를 추가한다.
 - route의 status=ready일 때만 launch_args를 Orca worker-start에 전달한다. blocked이면 해당 모델을 자동 배정하지 말고 검증 또는 명시 선택을 요청한다. 새 모델 이름을 추측하지 않는다.
 - 현재 요청은 --profile/--agent/--model/--effort로 반영한다. 로컬 profiles/routes가 공통 정책보다 우선한다. 기존 models/efforts는 라우팅을 사용하지 않는 경우만 적용한다.
