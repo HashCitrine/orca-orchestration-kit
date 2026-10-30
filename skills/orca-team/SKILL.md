@@ -12,6 +12,8 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - ORCA_CLI_COMMAND, ORCA_DEV_REPO_ROOT, OS에 따라 실행 파일을 선택한다. Linux 비관리 터미널에서는 orca-ide를 사용한다. 실행 실패 시 다른 런타임으로 전환하지 않는다.
 - 선택한 CLI의 `skills get orchestration`과 `skills get orca-cli`를 읽는다. 필요한 placement/recovery/coordinator 참고 자료는 해당 가이드에서 로드한다. 설치 시점의 문서를 실행 계약으로 고정하지 않는다.
 - Orca 연결과 에이전트의 실제 실행 가능 여부를 확인한다. CLI 존재만으로 로그인 성공이나 모델 사용 가능을 주장하지 않는다.
+- Claude 작업자 전에 doctor의 claude_worker를 본다. needs_claude_setup이면 띄우지 않고 사용자에게 `kit.py claude-setup` 실행을 안내한다. bypass 확인 화면을 터미널 입력으로 대신 수락하지 않는다. unknown이면 작은 작업으로 readiness를 먼저 확인한다.
+- Claude가 조정자일 때 orca 명령에 권한 확인이 뜰 수 있다. 사용자 세션 설정의 문제이므로 조정자가 권한 설정을 임의로 바꾸지 않는다.
 
 ## 배분과 모델
 - 작은 작업은 직접 수행한다. 역할은 작업 특성·가용 기능·검증 근거에 따라 정하고 모델별 성능 서열을 가정하지 않는다.
@@ -23,6 +25,7 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 
 ## 작업 수명
 - Task마다 대상, 산출물, 제약, 수정 소유권, 검증 기준을 포함한다. references/task-template.md를 사용한다.
+- `--worktree current`는 조정자 터미널이 속한 Orca 작업 공간이며 셸 cwd와 다를 수 있다. 시작 receipt의 worktree effect로 실제 위치를 확인하고 Task에 절대 경로를 적는다.
 - 동시에 쓰는 작업은 별도 Orca 작업 공간으로 격리한다. Git이 없는 폴더에서는 쓰기 작업을 직렬화한다. 현재 미커밋 변경이 다른 작업 공간에 자동 전달된다고 가정하지 않는다.
 - Run/Task/Dispatch, ask/reply, worker_done을 현재 가이드대로 사용한다. worker는 주입된 preamble의 정확한 ID/명령을 따른다. 하위 작업자 추가 생성은 하지 않아 전체 2명 한도를 유지한다.
 - 완료 주장과 실제 변경·테스트를 대조한다. 무응답은 실패가 아니다. 불확실하면 관찰하고, 확정된 종료/settlement에만 재시도·회수를 수행한다.

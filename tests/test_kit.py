@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -49,5 +50,54 @@ class Tests(unittest.TestCase):
             with patch.object(kit,'probe',return_value={'available':False}):
                 c=kit.doctor(root,{'models':{'agy':'explicit'}},root/'state')
                 self.assertTrue(c['changed']);self.assertFalse(c['tools']['agy']['available'])
+
+    def orca(self,root,args):
+        data=root/'Library/Application Support/orca/profiles/local-default/orca-data.json'
+        data.parent.mkdir(parents=True,exist_ok=True)
+        data.write_text(json.dumps({'settings':{'agentDefaultArgs':{'claude':args}}}))
+
+    def test_claude_readiness(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();settings=root/'.claude/settings.json'
+            self.assertEqual(kit.claude_readiness(root,'Darwin',{})['status'],'unknown')
+            self.orca(root,'--dangerously-skip-permissions')
+            self.assertEqual(kit.claude_readiness(root,'Darwin',{})['status'],'needs_claude_setup')
+            settings.parent.mkdir();settings.write_text('{"skipDangerousModePermissionPrompt": true}')
+            self.assertEqual(kit.claude_readiness(root,'Darwin',{})['status'],'ready')
+            settings.unlink();self.orca(root,'--permission-mode acceptEdits')
+            self.assertEqual(kit.claude_readiness(root,'Darwin',{})['status'],'ready')
+            linux=root/'.config/orca/profiles/p/orca-data.json';linux.parent.mkdir(parents=True)
+            linux.write_text(json.dumps({'settings':{'agentDefaultArgs':{'claude':'--permission-mode bypassPermissions'}}}))
+            self.assertEqual(kit.claude_readiness(root,'Linux',{})['status'],'needs_claude_setup')
+
+    def test_claude_setup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve();settings=root/'.claude/settings.json'
+            self.assertTrue(kit.claude_setup(root,{})['changed'])
+            self.assertEqual(json.loads(settings.read_text()),{'skipDangerousModePermissionPrompt':True})
+            original='{"model": "opus", "permissions": {"allow": ["Bash(ls)"]}}'
+            settings.write_text(original);result=kit.claude_setup(root,{})
+            self.assertEqual(Path(result['backup']).read_text(),original)
+            merged=json.loads(settings.read_text())
+            self.assertEqual(merged['model'],'opus');self.assertTrue(merged['skipDangerousModePermissionPrompt'])
+            self.assertFalse(kit.claude_setup(root,{})['changed'])
+            settings.write_text('{broken')
+            with self.assertRaises(ValueError):kit.claude_setup(root,{})
+            self.assertEqual(settings.read_text(),'{broken')
+            custom=root/'custom claude'
+            kit.claude_setup(root,{'CLAUDE_CONFIG_DIR':str(custom)})
+            self.assertTrue(json.loads((custom/'settings.json').read_text())['skipDangerousModePermissionPrompt'])
+
+    def test_doctor_reports_claude_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve()
+            with patch.object(kit,'probe',return_value={'available':True}), \
+                 patch.object(kit,'claude_readiness',return_value={'status':'needs_claude_setup'}):
+                a=kit.doctor(root,{},root/'state')
+            with patch.object(kit,'probe',return_value={'available':True}), \
+                 patch.object(kit,'claude_readiness',return_value={'status':'ready'}):
+                b=kit.doctor(root,{},root/'state')
+            self.assertEqual(a['claude_worker']['status'],'needs_claude_setup')
+            self.assertTrue(b['changed']);self.assertEqual(b['claude_worker']['status'],'ready')
 
 if __name__=='__main__':unittest.main()

@@ -13,6 +13,14 @@ Windows에서는 `py -3 kit.py install`과 `py -3 kit.py doctor`를 사용합니
 
 새 에이전트 대화에서 “orca-team 스킬로 이 작업을 팀으로 처리해줘”라고 요청합니다. 명시 요청 없이 작업자를 자동 실행하지 않습니다. 스킬 설치 후 기존 대화에 즉시 반영된다고 가정하지 않습니다.
 
+## Claude 작업자 준비
+Orca 기본 설정은 Claude를 `--dangerously-skip-permissions`로 실행합니다. Claude 설정에 이 모드를 허용한 기록이 없으면 첫 실행 확인 화면에서 멈춰 작업자 readiness가 실패합니다. `python3 kit.py doctor`의 `claude_worker`가 상태를 알려줍니다.
+- `ready`: 준비 완료.
+- `needs_claude_setup`: `python3 kit.py claude-setup`을 실행합니다. Claude 설정 파일(`CLAUDE_CONFIG_DIR` 또는 `~/.claude/settings.json`)을 백업한 뒤 `skipDangerousModePermissionPrompt: true`만 추가하고 다른 키는 보존합니다. install/update/uninstall은 이 파일을 건드리지 않습니다. 되돌리려면 그 키를 삭제하거나 백업을 복원합니다.
+- `unknown`: Orca 설정을 찾지 못했습니다. 작은 작업으로 먼저 확인합니다.
+
+bypass를 원하지 않으면 Orca 설정의 에이전트 기본 인자에서 Claude 값을 `--permission-mode auto` 등으로 바꿉니다. kit은 Orca 앱 설정을 수정하지 않습니다. 이 경우 허용되지 않은 명령에서 작업자가 확인 대기로 멈출 수 있습니다.
+
 ## 업데이트·제거
 패키지를 Git pull 또는 복사로 갱신한 뒤 `python3 kit.py update`를 실행합니다. `python3 kit.py uninstall`은 설치 당시 해시와 일치하는 관리 파일만 제거합니다. 사용자 수정과 추가 파일은 보존합니다. 충돌 시 파일을 별도로 보존·비교한 뒤 다시 실행합니다.
 
