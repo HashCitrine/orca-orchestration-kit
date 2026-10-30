@@ -43,3 +43,12 @@
 
 ## 초보자 시작 흐름 개선
 진행 중: setup 진단, verify-profile 근거 등록, 세 도구별 시작 가이드와 README 재구성.
+
+## Onboarding implementation completed (2026-10-30)
+
+- Implemented setup and verify-profile, refreshed README, and added a getting-started guide for all three agents.
+- 18 automated tests passed; skill validation and documentation link/JSON/code-fence checks passed.
+- Real setup checks passed for Codex, Claude and AGY on macOS. Claude has no bundled model profile and receives configuration guidance.
+- New Run run_3cc1edcbace3: Codex standard ctx_072b823518f8 and AGY light ctx_49dc417778ec succeeded. verify-profile registered live Orca evidence; repeated registration returned changed=false without extending completion time. Both workers were released.
+- Installed skill copies were updated. New Claude model verification and other-OS agent execution remain untested in this change.
+- setup writes only local observation metadata; it does not install external tools, log in, change permissions, or launch workers. Binary identity is checked using paths, size, timestamps and the pre-launch observation, not cryptographic attestation.

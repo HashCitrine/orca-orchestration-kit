@@ -57,3 +57,12 @@ Run: run_241e756ec53b
 공개 전환 완료: GitHub API에서 visibility=public, private=false, license=MIT 확인. 공개 준비 커밋 71aac08의 CI 6개 작업(macOS/Linux/Windows, Python 3.9/3.13)이 모두 성공했다. 과거 커밋으로 연결되던 Actions 기록 4건은 삭제했다. 로컬 저장소 및 설치된 스킬도 정리된 이력으로 동기화했다.
 
 개인 경로는 현재 main과 그 이력에서 제거했지만, GitHub가 참조되지 않는 옛 커밋 객체를 보관하는 동안에는 정확한 옛 SHA로 조회될 가능성이 있다. 서버 객체의 즉시 완전 삭제를 주장하지 않는다. 발견된 경로에는 인증정보가 포함되지 않았다.
+
+## Onboarding implementation completed (2026-10-30)
+
+- Implemented setup and verify-profile, refreshed README, and added a getting-started guide for all three agents.
+- 18 automated tests passed; skill validation and documentation link/JSON/code-fence checks passed.
+- Real setup checks passed for Codex, Claude and AGY on macOS. Claude has no bundled model profile and receives configuration guidance.
+- New Run run_3cc1edcbace3: Codex standard ctx_072b823518f8 and AGY light ctx_49dc417778ec succeeded. verify-profile registered live Orca evidence; repeated registration returned changed=false without extending completion time. Both workers were released.
+- Installed skill copies were updated. New Claude model verification and other-OS agent execution remain untested in this change.
+- setup writes only local observation metadata; it does not install external tools, log in, change permissions, or launch workers. Binary identity is checked using paths, size, timestamps and the pre-launch observation, not cryptographic attestation.
