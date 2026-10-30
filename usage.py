@@ -1,4 +1,4 @@
-"""Local quota observations and read-only Codex App Server adapter."""
+"""Local quota observations, read-only Codex App Server and Orca rate limit adapters."""
 import hashlib
 import json
 import math
@@ -7,6 +7,10 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+
+
+AUTOMATIC=('automatic','orca')
+DEFAULT_GROUPS={'codex':['codex'],'claude':['claude']}
 
 
 def load(state):
@@ -48,12 +52,13 @@ def status(state,profile,config,now=None):
     now=time.time() if now is None else now;p=policy(config)
     if not p['enabled']:return {'state':'disabled','windows':[]}
     d=load(state);agent=profile['agent'];account=d['active'].get(agent)
-    groups=profile.get('quota_groups', ['codex'] if agent=='codex' else [])
+    # AGY model groups are never guessed; its profiles must name quota_groups.
+    groups=profile.get('quota_groups', DEFAULT_GROUPS.get(agent,[]))
     applicable=set(groups)|{'account'};windows=[]
     rows=[r for r in d['records'] if r['agent']==agent and r['account']==account and r['group'] in applicable]
     for key in {(r['group'],r['window_minutes']) for r in rows}:
         eligible=[r for r in rows if (r['group'],r['window_minutes'])==key and 0<=now-r['observed_at']<=p['ttl_seconds'] and r['resets_at']>now]
-        if eligible:windows.append(max(eligible,key=lambda r:(r['source']=='automatic',r['observed_at'])))
+        if eligible:windows.append(max(eligible,key=lambda r:(r['source'] in AUTOMATIC,r['observed_at'])))
     covered={r['group'] for r in windows}
     if not windows:return {'state':'unknown','windows':[],'reason':'missing, stale, reset or account unknown'}
     minimum=min(r['remaining_percent'] for r in windows)
@@ -103,9 +108,40 @@ def codex_read(executable):
         process.stdin.close();process.stdout.close()
 
 
-def refresh(state,config,agent='codex'):
-    if agent!='codex':return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+def orca_window(agent,account,group,window,updated):
+    used=float(window['usedPercent']);minutes=int(window['windowMinutes']);reset=float(window['resetsAt'])/1000
+    if not math.isfinite(used) or not 0<=used<=100 or minutes<=0 or not math.isfinite(reset):raise ValueError('invalid provider quota')
+    return {'agent':agent,'account':account,'group':group,'remaining_percent':100-used,'window_minutes':minutes,
+            'resets_at':reset,'observed_at':updated,'source':'orca'}
+
+
+def orca_records(payload,agent):
+    # Orca reports the account it launches workers with; observed_at is Orca's own refresh time.
+    limits=payload['result']['rateLimits']
+    entry=limits['claude' if agent=='claude' else 'antigravity']
+    if not isinstance(entry,dict) or entry.get('status')!='ok' or entry.get('error'):raise ValueError('Orca quota unavailable')
+    updated=float(entry['updatedAt'])/1000
+    if not math.isfinite(updated):raise ValueError('invalid provider quota')
+    if agent=='claude':
+        active=payload['result'].get('claude',{}).get('activeAccountId') or 'system'
+        account='orca:'+str(active)+':'+str((limits.get('claudeTarget') or {}).get('runtime','host'))
+        windows=[('claude',entry.get(k)) for k in ('session','weekly')]+[('claude-fable',entry.get('fableWeekly'))]
+    else:
+        account='orca:antigravity'
+        windows=[(b['group'],b) for b in entry['buckets']]
+    return account,[orca_window(agent,account,group,w,updated) for group,w in windows if w is not None]
+
+
+def refresh(state,config,agent='codex',orca_reader=None):
+    if agent not in ('codex','claude','agy'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
     try:
+        if agent!='codex':
+            if orca_reader is None:raise ValueError('Orca reader unavailable')
+            account,records=orca_records(orca_reader(),agent)
+            d=load(state);d['active'][agent]=account
+            d['records']=[r for r in d['records'] if not(r['agent']==agent and r['source'] in AUTOMATIC)]+records
+            save(state,d)
+            return {'status':'updated' if records else 'unknown','agent':agent,'source':'orca','windows':records}
         account,response=codex_read(config.get('executables',{}).get('codex','codex'))
         buckets=response.get('rateLimitsByLimitId')
         if not isinstance(buckets,dict) or not buckets:
@@ -120,7 +156,7 @@ def refresh(state,config,agent='codex'):
                 if not math.isfinite(used) or not 0<=used<=100 or minutes<=0 or not math.isfinite(reset):raise ValueError('invalid provider quota')
                 records.append({'agent':agent,'account':account,'group':group,'remaining_percent':100-used,'window_minutes':minutes,'resets_at':reset,'observed_at':now,'source':'automatic'})
         d=load(state);d['active'][agent]=account
-        d['records']=[r for r in d['records'] if not(r['agent']==agent and r['source']=='automatic')]+records
+        d['records']=[r for r in d['records'] if not(r['agent']==agent and r['source'] in AUTOMATIC)]+records
         save(state,d)
         return {'status':'updated' if records else 'unknown','agent':agent,'windows':records}
     except (OSError,ValueError,KeyError,TypeError,OverflowError):

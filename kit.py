@@ -419,7 +419,15 @@ def main():
         if any(name not in profiles for names in usage_policy['alternatives'].values() for name in names):
             raise ValueError('unknown usage alternative profile')
         if args.command=='usage':
-            if args.usage_action=='refresh':result=usage.refresh(state,config,args.agent or 'codex')
+            if args.usage_action=='refresh':
+                cached=[]
+                def orca_limits():
+                    # One Orca call serves both Claude and AGY.
+                    if not cached:cached.append(orca_read(config,'account','list'))
+                    return cached[0]
+                agents=[args.agent] if args.agent else ['codex','claude','agy']
+                refreshed=[usage.refresh(state,config,a,orca_limits) for a in agents]
+                result=refreshed[0] if args.agent else {'status':'refreshed','agents':refreshed}
             elif args.usage_action=='show':
                 result={'profiles':{name:usage.status(state,p,config) for name,p in profiles.items()}}
             elif args.usage_action=='set':
@@ -453,8 +461,10 @@ def main():
             if 'reason' in result:print(result['reason'])
             for name,entry in result.get('profiles',{}).items():
                 print(name+': '+entry['state'])
-                for w in entry['windows']:print('  '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at'])+' / '+w['source'])
-            for w in result.get('windows',[]):print(w['group']+': '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at']))
+                for w in entry['windows']:print('  '+w['group']+': '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at'])+' / '+w['source'])
+            for entry in result.get('agents',[result]):
+                if 'agents' in result:print(entry['agent']+': '+entry['status']+(' - '+entry['reason'] if 'reason' in entry else ''))
+                for w in entry.get('windows',[]):print('  '+w['group']+': '+str(w['window_minutes'])+'분 / 잔여 '+str(w['remaining_percent'])+'% / reset '+str(w['resets_at']))
         elif args.command=='setup' and not args.json:
             print('초기 환경 확인: '+result['agent'])
             for key,value in result['checks'].items():print('  '+key+': '+str(value))

@@ -51,6 +51,51 @@ class UsageTests(unittest.TestCase):
         with patch.object(usage,'codex_read',side_effect=ValueError('failed')):usage.refresh(self.state,{})
         self.assertNotIn('codex',usage.load(self.state)['active'])
         self.assertEqual(usage.status(self.state,self.p,{})['state'],'unknown')
+    def orca_payload(self,now,claude_status='ok'):
+        ms=lambda t:t*1000
+        return {'ok':True,'result':{'claude':{'activeAccountId':None},'rateLimits':{
+            'claudeTarget':{'runtime':'host'},
+            'claude':{'status':claude_status,'error':None if claude_status=='ok' else 'failed','updatedAt':ms(now-30),
+                      'session':{'usedPercent':20,'windowMinutes':300,'resetsAt':ms(now+3600)},
+                      'weekly':{'usedPercent':85,'windowMinutes':10080,'resetsAt':ms(now+86400)},'fableWeekly':None},
+            'antigravity':{'status':'ok','error':None,'updatedAt':ms(now-60),'buckets':[
+                {'group':'Gemini Models','usedPercent':10,'windowMinutes':300,'resetsAt':ms(now+3600)},
+                {'group':'Gemini Models','usedPercent':30,'windowMinutes':10080,'resetsAt':ms(now+86400)},
+                {'group':'Gemini 4 Argon','usedPercent':70,'windowMinutes':10080,'resetsAt':ms(now+86400)}]}}}}
+    def test_orca_claude_and_agy(self):
+        now=usage.time.time();payload=self.orca_payload(now)
+        claude=usage.refresh(self.state,{},'claude',lambda:payload)
+        self.assertEqual(claude['status'],'updated');self.assertEqual(len(claude['windows']),2)
+        self.assertEqual({w['remaining_percent'] for w in claude['windows']},{80,15})
+        self.assertAlmostEqual(claude['windows'][0]['observed_at'],now-30)
+        self.assertAlmostEqual(claude['windows'][0]['resets_at'],now+3600)
+        self.assertEqual(usage.load(self.state)['active']['claude'],'orca:system:host')
+        q=usage.status(self.state,{**self.p,'agent':'claude'},{})
+        self.assertEqual((q['state'],q['remaining_percent']),('conserve',15))
+        usage.refresh(self.state,{},'agy',lambda:payload)
+        light=usage.status(self.state,{'agent':'agy','quota_groups':['Gemini Models']},{})
+        review=usage.status(self.state,{'agent':'agy','quota_groups':['Gemini Models','Gemini 4 Argon']},{})
+        self.assertEqual((light['state'],light['remaining_percent']),('normal',70))
+        self.assertEqual((review['state'],review['remaining_percent']),('normal',30))
+        self.assertEqual(usage.status(self.state,{'agent':'agy'},{})['state'],'unknown')
+        self.assertEqual(usage.status(self.state,{**self.p,'agent':'claude'},{},now+400)['state'],'unknown')
+    def test_orca_failure_isolated(self):
+        now=usage.time.time()
+        usage.refresh(self.state,{},'claude',lambda:self.orca_payload(now))
+        usage.refresh(self.state,{},'agy',lambda:self.orca_payload(now))
+        failed=usage.refresh(self.state,{},'claude',lambda:self.orca_payload(now,'error'))
+        self.assertEqual(failed['status'],'unknown');d=usage.load(self.state)
+        self.assertNotIn('claude',d['active']);self.assertEqual(d['active']['agy'],'orca:antigravity')
+        self.assertEqual(usage.status(self.state,{**self.p,'agent':'claude'},{})['state'],'unknown')
+        self.assertEqual(usage.refresh(self.state,{},'agy')['status'],'unknown')
+    def test_orca_alternative_selected(self):
+        now=usage.time.time();self.obs(10,now=now)
+        d=usage.load(self.state)
+        for row in d['records']:row['resets_at']=now+1000
+        usage.save(self.state,d);usage.refresh(self.state,{},'agy',lambda:self.orca_payload(now))
+        alt={**self.p,'agent':'agy','profile':'review','quota_groups':['Gemini Models','Gemini 4 Argon']}
+        selected=usage.select(self.p,{'usage':{'alternatives':{'design':['review']}}},self.state,'design',lambda n:alt)
+        self.assertEqual((selected['profile'],selected['usage']['state']),('review','normal'))
     def test_input_validation(self):
         for value in [-1,101,float('nan')]:
             with self.assertRaises(ValueError):self.obs(value)

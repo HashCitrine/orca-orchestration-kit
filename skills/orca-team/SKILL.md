@@ -20,7 +20,7 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - Claude가 조정자일 때 orca 명령에 권한 확인이 뜰 수 있다. 사용자 세션 설정의 문제이므로 조정자가 권한 설정을 임의로 바꾸지 않는다.
 
 ## 배분과 모델
-- 새 작업자 배정 직전에 scripts/kit.py usage refresh --agent codex를 실행한다. 두 번째 작업자 배정 전에도 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
+- 새 작업자 배정 직전에 scripts/kit.py usage refresh를 실행한다. Codex는 App Server, Claude·AGY는 Orca `account list`의 공식 집계로 갱신된다. 두 번째 작업자 배정 전에도 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
 - 잔여 20% 이하에서는 설정된 품질 적합 대안 중 다른 한도의 여유가 확인된 조합을 우선한다. 5% 이하에서는 새 배정을 보류한다. 미확인·오래된 정보는 여유 있다고 가정하지 않고 기존 정책을 유지한다.
 - usage.alternatives는 작업별 품질 적합 프로필의 명시 목록이다. 새 대안을 모델 이름이나 effort만으로 동등하다고 추측해 추가하지 않는다. API 조회는 계정 변경 또는 실패 시 이전 계정 관찰을 재사용하지 않는다.
 - 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 사용량 데이터는 Jev에 보내지 않는다.

@@ -61,3 +61,7 @@ Completed: Codex read-only quota adapter, manual observations, reserve policy, t
 Implemented Codex read-only App Server quota refresh, manual observations, local account-scoped storage, five-minute expiry, reserve thresholds and quality-approved alternatives. Current real response supplied a weekly window; no five-hour window was inferred. No account identifiers or quota numbers are committed. Claude/AGY automatic collection remains unsupported. Cross-profile alternatives are opt-in configuration, not an inferred model performance ranking.
 
 Quota validation: 25 automated tests and skill validation passed. Codex account/rateLimits/read succeeded without inference work; missing time windows were not inferred. Local alternatives were configured, and installed skill copies were updated. Claude/AGY quota automation and precise usage reservations remain outside this implementation.
+
+## Claude/AGY quota via Orca (2026-10-30)
+
+Claude and AGY quota are now refreshed from Orca's official `account list --json` rateLimits (one call for both), using Orca's updatedAt as the observation time so the five-minute expiry reflects real freshness. `usage refresh` without --agent refreshes Codex, Claude and AGY independently. Default AGY profiles declare quota_groups (light: Gemini Models; review: Gemini Models + Gemini 4 Argon). Not used: Claude statusLine (owned by Orca), `agy -p /usage` (no account identity), undocumented local caches.

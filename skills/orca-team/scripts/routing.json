@@ -6,7 +6,10 @@
       "effort": "low",
       "effort_mode": "embedded",
       "fallback": "standard",
-      "upgrade": "standard"
+      "upgrade": "standard",
+      "quota_groups": [
+        "Gemini Models"
+      ]
     },
     "standard": {
       "agent": "codex",
@@ -26,7 +29,11 @@
       "model": "gemini-4-argon-high",
       "effort": "high",
       "effort_mode": "embedded",
-      "fallback": "deep"
+      "fallback": "deep",
+      "quota_groups": [
+        "Gemini Models",
+        "Gemini 4 Argon"
+      ]
     }
   },
   "routes": {
