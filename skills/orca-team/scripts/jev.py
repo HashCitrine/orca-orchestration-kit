@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small official Jev client; credentials and request bodies are never logged."""
+"""Small Jev client for the official TypeSafe API; credentials and request bodies are never logged."""
 
 import argparse
 import getpass

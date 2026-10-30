@@ -271,3 +271,7 @@ python3 -m unittest discover -s tests -v
 | [검증 결과](docs/VALIDATION.md) | 실제 확인한 환경과 제한 |
 | [모델 프로필 운영](docs/ROUTING.md) | 선택 우선순위, 검증 기록, 대체·상향 규칙 |
 | [공통 스킬](skills/orca-team/SKILL.md) | 에이전트가 따르는 운영 지침 |
+
+## 라이선스와 출처
+
+이 프로젝트는 [MIT 라이선스](LICENSE)로 제공합니다. 출처와 라이선스 고지를 유지하면서 사용·수정·배포할 수 있습니다. 외부 CLI·모델·API는 각 공급자의 이용 조건을 따릅니다. [코드 출처 안내](docs/PROVENANCE.md)도 함께 확인해주세요.
