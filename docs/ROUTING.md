@@ -20,3 +20,27 @@ Jev는 유형/난이도 분류만 보조한다. 실패하면 조정자가 동일
 상향: 이전 route JSON을 --prior로 전달하고 --failure quality --settled를 함께 사용한다. 실제 Dispatch 종료 확인은 조정자의 책임이다. 상향은 한 번만, high 이하 승인 프로필로 제한한다. 인증·네트워크·설치 실패는 상향하지 않는다. --prior 파일을 바꾸어 상향 제한을 회피하지 않는다.
 
 리뷰는 --implementation-agent를 전달해 review_independence를 확인한다. false이면 독립 도구가 아님을 보고하고, 가능하면 다른 검증된 검토 프로필을 명시 선택한다. 모델 변경 시 기존 terminal 재사용을 하지 않는다.
+
+## 검증 기록 등록
+
+검증 전 `kit.py setup --agent <agent>`를 실행한다. 이후 조정자가 실행한 읽기 전용 작업이 성공하면 `kit.py verify-profile --profile <name> --dispatch <id>`를 사용한다. 검증 파일을 직접 작성하지 않는다. 완료 시각부터 7일을 계산하며 오래된 작업 재등록으로 연장하지 않는다. 실행 파일 관찰 기록이 누락되거나 작업 이후 변경되었으면 setup부터 새 검증을 수행한다. 완료 메시지 처리와 회수는 조정자의 책임이다.
+
+### 로컬 설정 예제
+
+아래는 기존 standard 프로필을 같은 조합으로 재정의하는 형식 예시다. 모델을 바꾸면 해당 조합을 다시 검증한다.
+
+```json
+{
+  "max_workers": 1,
+  "profiles": {
+    "standard": {
+      "agent": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "effort_mode": "flag",
+      "upgrade": "deep"
+    }
+  },
+  "routes": {"implementation": "standard"}
+}
+```

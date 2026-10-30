@@ -8,6 +8,10 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 사용자가 명시 요청했을 때만 작업자를 시작한다. 일반 요청은 병렬 구현 또는 독립 검토의 이점이 명확하면 추천만 한다. 시작한 에이전트가 조정자이며 추가 작업자는 기본 최대 2명이며 로컬 max_workers가 1이면 1명으로 제한한다. 보고는 한국어로 한다.
 
 ## 시작
+- 처음 설치하거나 route가 blocked이면 scripts/kit.py setup --agent codex|claude|agy를 실행한다. 검증 전 실행 파일 관찰 기록이 저장된다. setup은 작업자를 실행하지 않는다.
+- 새 모델 검증은 setup 이후 작은 읽기 전용 Task로 실행한다. 이 bootstrap 작업만 검증 전 프로필의 명시 모델을 사용할 수 있다. 일반 사용자 작업에 이 예외를 적용하지 않는다.
+- 성공한 Dispatch에 scripts/kit.py verify-profile --profile <name> --dispatch <id>를 실행한다. 검증 JSON을 직접 작성하지 않는다. 누락 정보나 불일치가 있으면 새로운 검증으로 해결하고 실제 모델을 추측하지 않는다.
+- 등록 후에도 완료 메시지 처리·ack·회수는 조정자의 책임이다. setup과 verify-profile은 실행·회수·권한 변경을 하지 않는다.
 - 이 스킬의 scripts/kit.py doctor를 현재 Python으로 실행한다. 설정은 ~/.config/orca-orchestration-kit/config.json이다. 현재 요청 > 로컬 설정 > 이 정책 > 도구 기본값 순으로 적용한다.
 - ORCA_CLI_COMMAND, ORCA_DEV_REPO_ROOT, OS에 따라 실행 파일을 선택한다. Linux 비관리 터미널에서는 orca-ide를 사용한다. 실행 실패 시 다른 런타임으로 전환하지 않는다.
 - 선택한 CLI의 `skills get orchestration`과 `skills get orca-cli`를 읽는다. 필요한 placement/recovery/coordinator 참고 자료는 해당 가이드에서 로드한다. 설치 시점의 문서를 실행 계약으로 고정하지 않는다.

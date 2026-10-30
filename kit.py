@@ -269,9 +269,104 @@ def route(config, state, task_type, complexity='normal', profile=None, model=Non
     return {'status':'blocked','reason':'no verified compatible profile','rejected':rejected}
 
 
+
+def orca_read(config, *args):
+    executable=config.get('executables',{}).get('orca',orca_command())
+    try:
+        result=subprocess.run([executable,*args,'--json'],capture_output=True,text=True,
+                              encoding='utf-8',errors='replace',timeout=20,shell=False)
+    except (OSError,subprocess.TimeoutExpired):
+        raise ValueError('Orca 연결 실패: 앱 실행과 CLI 경로를 확인하세요.') from None
+    try:
+        payload=json.loads(result.stdout)
+    except ValueError:
+        raise ValueError('Orca 응답 형식을 확인할 수 없습니다.') from None
+    if result.returncode or not isinstance(payload,dict) or payload.get('ok') is not True:
+        raise ValueError('Orca 요청 실패: 런타임 연결·권한·명령 지원 여부를 확인하세요.')
+    return payload
+
+
+def setup(home, config, state, agent):
+    profiles,_=routing_config(config)
+    executable=config.get('executables',{}).get(agent,agent)
+    cli=probe(executable)
+    installed=(roots(home,config)[agent]/NAME/'SKILL.md').is_file()
+    try:
+        result=orca_read(config,'status')['result']
+        connected=result.get('runtime',{}).get('reachable') is True
+    except (ValueError,KeyError,TypeError):
+        connected=False
+    checks={'python':sys.version.split()[0],'git':bool(shutil.which('git')),
+            'orca_connected':connected,'agent_cli':bool(cli.get('available') and cli.get('help_ok')),
+            'skill_installed':installed}
+    candidates={name:route(config,state,'implementation',profile=name)['status']
+                for name,p in profiles.items() if p['agent']==agent}
+    next_steps=[]
+    if not checks['git']:next_steps.append('일반 터미널: Git을 설치하고 git --version을 확인하세요.')
+    if not connected:next_steps.append('Orca 앱을 실행하고 해당 환경의 Orca CLI 연결을 확인하세요.')
+    if not checks['agent_cli']:next_steps.append(agent+' CLI를 공식 안내로 설치하고 새 터미널에서 실행해 로그인하세요.')
+    if not installed:next_steps.append('키트 저장소: python3 kit.py install (Windows: py -3 kit.py install)')
+    if not candidates:next_steps.append('이 도구의 기본 프로필이 없습니다. 에이전트에게 지원 모델·effort를 확인하고 로컬 profiles에 전체 프로필을 추가하도록 요청하세요.')
+    elif any(v!='ready' for v in candidates.values()):next_steps.append('Orca의 새 에이전트 대화에서 아래 요청문으로 작은 모델 검증을 진행하세요.')
+    if not next_steps:next_steps.append('Orca에서 작업할 프로젝트를 열고 새 대화에서 orca-team을 호출하세요.')
+    identities={a:tool_identity(a,config) for a in ('codex','claude','agy')}
+    write_json(state/'setup-observation.json',{'observed_at':datetime.now(timezone.utc).isoformat(),'identities':identities})
+    return {'agent':agent,'checks':checks,'profiles':candidates,'next_steps':next_steps,
+            'authentication':'CLI 존재만 확인했습니다. 각 도구에서 로그인 여부를 확인하세요.',
+            'prompt':'orca-team 스킬을 읽고 '+agent+'로 첫 읽기 전용 작업을 준비해줘. 사용할 프로필이 없으면 지원 모델과 effort를 확인해 로컬 프로필을 구성해줘. setup을 다시 실행한 뒤 현재 Orca 작업 공간에서 작은 검증 작업을 실행하고, 성공한 Dispatch를 verify-profile로 등록해줘. 완료 보고 처리와 작업자 회수까지 진행하고 결과를 알려줘.'}
+
+
+def parse_time(value):
+    parsed=datetime.fromisoformat(value.replace('Z','+00:00'))
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+
+
+def verify_profile(config,state,name,dispatch_id):
+    if os.environ.get('ORCA_ENVIRONMENT') or os.environ.get('ORCA_PAIRING_CODE'):
+        raise ValueError('원격 Orca 환경의 검증 등록은 지원하지 않습니다.')
+    profiles,_=routing_config(config)
+    if name not in profiles:raise ValueError('알 수 없는 프로필입니다.')
+    p=profiles[name]
+    # Query the live runtime, never accept caller-provided completion JSON.
+    payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id)
+    try:
+        result=payload['result'];dispatch=result['dispatch'];worker=result['worker']
+        if dispatch['id']!=dispatch_id or worker['dispatchId']!=dispatch_id:
+            raise ValueError('Dispatch ID 불일치')
+        if dispatch['hostScope']['kind']!='local':raise ValueError('로컬 검증만 지원합니다.')
+        if dispatch['status']!='completed' or worker['state']!='succeeded':
+            raise ValueError('성공한 완료 작업만 등록할 수 있습니다.')
+        effective=worker['startOptions']['launch']['effective']
+        expected_agent={'agy':'antigravity'}.get(p['agent'],p['agent'])
+        expected_effort=p['effort'] if p['effort_mode']=='flag' else None
+        if (effective['agent'],effective['model'],effective.get('effort'))!=(expected_agent,p['model'],expected_effort):
+            raise ValueError('실제 도구·모델·effort가 프로필과 다릅니다.')
+        completed=parse_time(dispatch['completedAt']);started=parse_time(worker['createdAt'])
+        age=(datetime.now(timezone.utc)-completed).total_seconds()
+        if not 0<=age<=7*86400 or completed<started:raise ValueError('완료 시각이 유효하지 않거나 7일이 지났습니다.')
+        observation=read_json(state/'setup-observation.json',{})
+        identity=tool_identity(p['agent'],config)
+        if (not identity or observation['identities'][p['agent']]!=identity
+                or parse_time(observation['observed_at'])>started
+                or identity['mtime_ns']/1e9>started.timestamp()):
+            raise ValueError('작업 전 setup 기록과 현재 실행 파일이 일치해야 합니다. setup 후 새 검증 작업을 실행하세요.')
+    except (KeyError,TypeError,AttributeError):
+        raise ValueError('검증 필드 또는 작업 전 setup 기록이 없습니다. 등록하지 않았습니다.') from None
+    record={'verified_at':completed.isoformat(),'identity':identity,'dispatch_id':dispatch_id,
+            'source':'Orca worker-show: succeeded + launch.effective','actual_model':effective['model'],
+            'actual_effort':p['effort'],'runtime_id':payload.get('_meta',{}).get('runtimeId')}
+    path=state/'model-evidence.json';evidence=read_json(path,{})
+    if not isinstance(evidence,dict):raise ValueError('검증 파일이 JSON 객체가 아닙니다.')
+    key=profile_key(p);changed=evidence.get(key)!=record
+    if changed:
+        evidence[key]=record;write_json(path,evidence)
+    return {'status':'verified','profile':name,'changed':changed,'verified_at':record['verified_at'],
+            'dispatch_id':dispatch_id,'next_step':'조정자가 완료 메시지를 처리하고 작업자를 회수하세요.'}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup','route'])
+    parser.add_argument('command', choices=['install','update','uninstall','doctor','claude-setup','route','setup','verify-profile'])
     parser.add_argument('--home',type=Path,default=Path.home(),help='isolated installation home for tests')
     parser.add_argument('--task-type', choices=['simple','implementation','test','design','debug','review'])
     parser.add_argument('--complexity', choices=['normal','complex'], default='normal')
@@ -283,6 +378,8 @@ def main():
     parser.add_argument('--failure', choices=['quality','auth','network','installation'])
     parser.add_argument('--settled', action='store_true', help='coordinator has verified prior Dispatch settlement')
     parser.add_argument('--implementation-agent', choices=['codex','claude','agy'])
+    parser.add_argument('--dispatch')
+    parser.add_argument('--json',action='store_true',help='machine-readable setup report')
     args=parser.parse_args()
     state=args.home/'.config/orca-orchestration-kit'
     try:
@@ -302,7 +399,13 @@ def main():
             if agent not in config.get('models',{}):
                 raise ValueError('effort requires an explicit model')
         routing_config(config)
-        if args.command=='route':
+        if args.command=='setup':
+            if not args.agent:raise ValueError('--agent required')
+            result=setup(args.home,config,state,args.agent)
+        elif args.command=='verify-profile':
+            if not args.profile or not args.dispatch:raise ValueError('--profile and --dispatch required')
+            result=verify_profile(config,state,args.profile,args.dispatch)
+        elif args.command=='route':
             if not args.task_type:
                 raise ValueError('--task-type required')
             result=route(config,state,args.task_type,args.complexity,args.profile,args.model,args.effort,
@@ -317,7 +420,16 @@ def main():
             if args.command!='uninstall' and not (source/'SKILL.md').is_file():
                 raise ValueError('install/update must run from repository root kit.py')
             result=install(source,roots(args.home,config),state,args.command=='uninstall')
-        print(json.dumps(result,ensure_ascii=False,indent=2))
+        if args.command=='setup' and not args.json:
+            print('초기 환경 확인: '+result['agent'])
+            for key,value in result['checks'].items():print('  '+key+': '+str(value))
+            print('프로필: '+json.dumps(result['profiles'],ensure_ascii=False))
+            print(result['authentication'])
+            print('다음 단계:')
+            for step in result['next_steps']:print('  - '+step)
+            print('Orca의 새 대화에 붙여 넣을 요청:\n'+result['prompt'])
+        else:
+            print(json.dumps(result,ensure_ascii=False,indent=2))
         return 0
     except (ValueError,OSError) as exc:
         print(str(exc),file=sys.stderr)

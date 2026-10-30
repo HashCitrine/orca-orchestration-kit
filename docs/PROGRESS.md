@@ -40,3 +40,6 @@
 공개 전환 완료: GitHub API에서 visibility=public, private=false, license=MIT 확인. 공개 준비 커밋 71aac08의 CI 6개 작업(macOS/Linux/Windows, Python 3.9/3.13)이 모두 성공했다. 과거 커밋으로 연결되던 Actions 기록 4건은 삭제했다. 로컬 저장소 및 설치된 스킬도 정리된 이력으로 동기화했다.
 
 개인 경로는 현재 main과 그 이력에서 제거했지만, GitHub가 참조되지 않는 옛 커밋 객체를 보관하는 동안에는 정확한 옛 SHA로 조회될 가능성이 있다. 서버 객체의 즉시 완전 삭제를 주장하지 않는다. 발견된 경로에는 인증정보가 포함되지 않았다.
+
+## 초보자 시작 흐름 개선
+진행 중: setup 진단, verify-profile 근거 등록, 세 도구별 시작 가이드와 README 재구성.
