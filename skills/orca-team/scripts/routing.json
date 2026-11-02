@@ -109,6 +109,33 @@
         "claude-fable"
       ],
       "require_quota": true
+    },
+    "grok-4.5": {
+      "agent": "grok",
+      "model": "grok-4.5",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "grok"
+      ]
+    },
+    "grok-4.6": {
+      "agent": "grok",
+      "model": "grok-4.6",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "grok"
+      ]
+    },
+    "grok-4.7": {
+      "agent": "grok",
+      "model": "grok-4.7",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "grok"
+      ]
     }
   },
   "routes": {
@@ -123,6 +150,7 @@
     "simple": [
       "light",
       "gemini-flash",
+      "grok-4.5",
       "standard"
     ],
     "implementation": [
@@ -135,6 +163,9 @@
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
+      "grok-4.5",
+      "grok-4.6",
+      "grok-4.7",
       "review"
     ],
     "test": [
@@ -147,6 +178,9 @@
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
+      "grok-4.5",
+      "grok-4.6",
+      "grok-4.7",
       "review"
     ],
     "design": [
@@ -157,6 +191,8 @@
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
+      "grok-4.6",
+      "grok-4.7",
       "review"
     ],
     "debug": [
@@ -169,6 +205,9 @@
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
+      "grok-4.5",
+      "grok-4.6",
+      "grok-4.7",
       "review"
     ],
     "review": [
@@ -180,6 +219,9 @@
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
+      "grok-4.5",
+      "grok-4.6",
+      "grok-4.7",
       "deep",
       "standard"
     ]

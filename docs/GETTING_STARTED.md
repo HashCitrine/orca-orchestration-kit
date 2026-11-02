@@ -33,7 +33,7 @@ CLI로 등록하려면 일반 터미널에서 실제 프로젝트 경로로 바�
 orca repo add --path /absolute/path/to/your-project --json
 ```
 
-Linux에서는 `orca`를 `orca-ide`로 바꾸고, Windows에서는 `--path "C:\work\your-project"`처럼 경로를 사용합니다. 프로젝트의 에이전트 탭에서 Claude·Codex·AGY 중 준비한 도구를 선택해 새 대화를 시작하세요. 앱 화면의 이름은 버전에 따라 달라질 수 있습니다.
+Linux에서는 `orca`를 `orca-ide`로 바꾸고, Windows에서는 `--path "C:\work\your-project"`처럼 경로를 사용합니다. 프로젝트의 에이전트 탭에서 Claude·Codex·AGY·Grok 중 준비한 도구를 선택해 새 대화를 시작하세요. 앱 화면의 이름은 버전에 따라 달라질 수 있습니다.
 
 **성공 기준:** Orca에서 대상 프로젝트와 해당 에이전트 대화가 보이고, Orca CLI 상태 조회가 연결 성공을 반환합니다. 외부의 일반 CLI 대화가 자동으로 Orca 조정자로 등록된다고 가정하지 마세요.
 
@@ -54,6 +54,7 @@ Windows PowerShell에서는 `python3` 대신 `py -3`를 사용하세요. 설치�
 | Codex | `python3 kit.py setup --agent codex` | standard를 먼저 검증 |
 | Claude | `python3 kit.py setup --agent claude` | 지원 모델·effort로 로컬 프로필 추가 후 검증 |
 | AGY | `python3 kit.py setup --agent agy` | light를 먼저 검증 |
+| Grok | `python3 kit.py setup --agent grok` | grok-4.5·grok-4.6·grok-4.7 중 쓸 모델을 검증 |
 
 `setup`은 Git, Orca 연결, 선택한 CLI, 설치된 스킬과 프로필 상태를 알려주고 다음 단계와 복사할 요청문을 출력합니다. `--json`으로 기계 판독용 결과를 받을 수 있습니다. 외부 프로그램을 설치하거나 에이전트를 시작하지는 않지만, 나중에 실행 파일을 대조할 수 있도록 로컬 `setup-observation.json`을 기록합니다.
 

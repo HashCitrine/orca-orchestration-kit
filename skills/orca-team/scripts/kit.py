@@ -28,7 +28,8 @@ def write_json(path, value):
 
 def roots(home, config):
     values = {'codex': Path(os.environ.get('CODEX_HOME', str(home/'.codex')))/'skills',
-              'claude': home/'.claude/skills', 'agy': home/'.gemini/config/skills'}
+              'claude': home/'.claude/skills', 'agy': home/'.gemini/config/skills',
+              'grok': Path(os.environ.get('GROK_HOME', str(home/'.grok')))/'skills'}
     for key, value in config.get('skill_roots', {}).items():
         if key not in values:
             raise ValueError('unknown skill root: '+key)
@@ -154,7 +155,7 @@ def probe(command):
         return {'available': True, 'path': executable, 'help_ok': False}
 
 def doctor(home, config, state):
-    commands = {'orca': orca_command(), 'claude':'claude', 'codex':'codex', 'agy':'agy'}
+    commands = {'orca': orca_command(), 'claude':'claude', 'codex':'codex', 'agy':'agy', 'grok':'grok'}
     commands.update(config.get('executables', {}))
     observations = {k: probe(v) for k,v in commands.items()}
     claude_worker = claude_readiness(home)
@@ -193,7 +194,7 @@ def routing_config(config):
     for name, p in profiles.items():
         if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade','quota_groups','require_quota'}:
             raise ValueError('invalid profile: '+name)
-        if p.get('agent') not in ('codex','claude','agy') or not isinstance(p.get('model'),str) or not p['model'].strip():
+        if p.get('agent') not in ('codex','claude','agy','grok') or not isinstance(p.get('model'),str) or not p['model'].strip():
             raise ValueError('profile requires agent and model: '+name)
         if p.get('effort') not in ('low','medium','high','xhigh','max','ultra') or p.get('effort_mode') not in ('flag','embedded'):
             raise ValueError('invalid effort or effort_mode: '+name)
@@ -411,7 +412,7 @@ def setup(home, config, state, agent):
     if not candidates:next_steps.append('이 도구의 기본 프로필이 없습니다. 에이전트에게 지원 모델·effort를 확인하고 로컬 profiles에 전체 프로필을 추가하도록 요청하세요.')
     elif any(v!='ready' for v in candidates.values()):next_steps.append('Orca의 새 에이전트 대화에서 아래 요청문으로 작은 모델 검증을 진행하세요.')
     if not next_steps:next_steps.append('Orca에서 작업할 프로젝트를 열고 새 대화에서 orca-team을 호출하세요.')
-    identities={a:tool_identity(a,config) for a in ('codex','claude','agy')}
+    identities={a:tool_identity(a,config) for a in ('codex','claude','agy','grok')}
     write_json(state/'setup-observation.json',{'observed_at':datetime.now(timezone.utc).isoformat(),'identities':identities})
     return {'agent':agent,'checks':checks,'profiles':candidates,'next_steps':next_steps,
             'authentication':'CLI 존재만 확인했습니다. 각 도구에서 로그인 여부를 확인하세요.',
@@ -481,11 +482,11 @@ def main():
     parser.add_argument('--selection-reason',help='why the coordinator selected this candidate')
     parser.add_argument('--model')
     parser.add_argument('--effort')
-    parser.add_argument('--agent', choices=['codex','claude','agy'])
+    parser.add_argument('--agent', choices=['codex','claude','agy','grok'])
     parser.add_argument('--prior', type=Path, help='previous route JSON for a quality-failure upgrade')
     parser.add_argument('--failure', choices=['quality','auth','network','installation'])
     parser.add_argument('--settled', action='store_true', help='coordinator has verified prior Dispatch settlement')
-    parser.add_argument('--implementation-agent', choices=['codex','claude','agy'])
+    parser.add_argument('--implementation-agent', choices=['codex','claude','agy','grok'])
     parser.add_argument('usage_action',nargs='?',choices=['refresh','show','set'])
     parser.add_argument('--account',help='local non-personal account label for manual input')
     parser.add_argument('--group')
@@ -506,7 +507,7 @@ def main():
             values=config.get(section,{})
             if not isinstance(values,dict) or any(not isinstance(v,str) or not v.strip() for v in values.values()):
                 raise ValueError(section+' must map names to nonempty strings')
-            allowed={'codex','claude','agy'}|({'orca'} if section=='executables' else set())
+            allowed={'codex','claude','agy','grok'}|({'orca'} if section=='executables' else set())
             if set(values)-allowed:
                 raise ValueError('unknown agent in '+section)
         for agent in config.get('efforts',{}):
@@ -520,10 +521,10 @@ def main():
             if args.usage_action=='refresh':
                 cached=[]
                 def orca_limits():
-                    # One Orca call serves both Claude and AGY.
+                    # One Orca call serves Claude, AGY and Grok.
                     if not cached:cached.append(orca_read(config,'account','list'))
                     return cached[0]
-                agents=[args.agent] if args.agent else ['codex','claude','agy']
+                agents=[args.agent] if args.agent else ['codex','claude','agy','grok']
                 refreshed=[usage.refresh(state,config,a,orca_limits) for a in agents]
                 result=refreshed[0] if args.agent else {'status':'refreshed','agents':refreshed}
             elif args.usage_action=='show':

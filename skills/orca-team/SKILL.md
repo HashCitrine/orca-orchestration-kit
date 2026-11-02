@@ -1,6 +1,6 @@
 ---
 name: orca-team
-description: Coordinate Claude, Codex and agy through Orca when the user requests team work or orchestration. For ordinary work, recommend orchestration when useful without launching it automatically.
+description: Coordinate Claude, Codex, agy and Grok through Orca when the user requests team work or orchestration. For ordinary work, recommend orchestration when useful without launching it automatically.
 ---
 
 # Orca 개인 공통 팀
@@ -8,7 +8,7 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 사용자가 명시 요청했을 때만 작업자를 시작한다. 일반 요청은 병렬 구현 또는 독립 검토의 이점이 명확하면 추천만 한다. 시작한 에이전트가 조정자이며 추가 작업자는 기본 최대 2명이며 로컬 max_workers가 1이면 1명으로 제한한다. 보고는 한국어로 한다.
 
 ## 시작
-- 처음 설치하거나 route가 blocked이면 scripts/kit.py setup --agent codex|claude|agy를 실행한다. 검증 전 실행 파일 관찰 기록이 저장된다. setup은 작업자를 실행하지 않는다.
+- 처음 설치하거나 route가 blocked이면 scripts/kit.py setup --agent codex|claude|agy|grok를 실행한다. 검증 전 실행 파일 관찰 기록이 저장된다. setup은 작업자를 실행하지 않는다.
 - 새 모델 검증은 setup 이후 작은 읽기 전용 Task로 실행한다. 이 bootstrap 작업만 검증 전 프로필의 명시 모델을 사용할 수 있다. 일반 사용자 작업에 이 예외를 적용하지 않는다.
 - 성공한 Dispatch에 scripts/kit.py verify-profile --profile <name> --dispatch <id>를 실행한다. 검증 JSON을 직접 작성하지 않는다. 누락 정보나 불일치가 있으면 새로운 검증으로 해결하고 실제 모델을 추측하지 않는다.
 - 등록 후에도 완료 메시지 처리·ack·회수는 조정자의 책임이다. setup과 verify-profile은 실행·회수·권한 변경을 하지 않는다.
@@ -20,13 +20,14 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - Claude가 조정자일 때 orca 명령에 권한 확인이 뜰 수 있다. 사용자 세션 설정의 문제이므로 조정자가 권한 설정을 임의로 바꾸지 않는다.
 
 ## 배분과 모델
-- 새 작업자 배정 직전에 scripts/kit.py usage refresh를 실행한다. Codex는 App Server, Claude·AGY는 Orca `account list`의 공식 집계로 갱신된다. 두 번째 작업자 배정 전에도 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
+- 새 작업자 배정 직전에 scripts/kit.py usage refresh를 실행한다. Codex는 App Server, Claude·AGY·Grok는 Orca `account list`의 공식 집계로 갱신된다. 두 번째 작업자 배정 전에도 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
 - 잔여 20% 이하에서는 설정된 품질 적합 대안 중 다른 한도의 여유가 확인된 조합을 우선한다. 5% 이하에서는 새 배정을 보류한다. 미확인·오래된 정보는 여유 있다고 가정하지 않고 기존 정책을 유지한다.
 - usage.alternatives는 작업별 품질 적합 프로필의 명시 목록이다. 새 대안을 모델 이름이나 effort만으로 동등하다고 추측해 추가하지 않는다. API 조회는 계정 변경 또는 실패 시 이전 계정 관찰을 재사용하지 않는다.
 - 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 사용량 데이터는 Jev에 보내지 않는다.
-- 작은 작업은 직접 처리한다. 분배가 필요하면 `route --task-type <type> --candidates`로 작업별 승인 후보를 조회한다. Claude·Codex·AGY 중 작업 내용, 변경 범위, 검증 기준, 독립 검토 필요성과 확인된 구독 잔여량을 보고 매번 선택한다. 세 도구의 동시 사용·균등 배분이나 고정 역할은 강제하지 않는다.
+- 작은 작업은 직접 처리한다. 분배가 필요하면 `route --task-type <type> --candidates`로 작업별 승인 후보를 조회한다. Claude·Codex·AGY·Grok 중 작업 내용, 변경 범위, 검증 기준, 독립 검토 필요성과 확인된 구독 잔여량을 보고 매번 선택한다. 네 도구의 동시 사용·균등 배분이나 고정 역할은 강제하지 않는다. 기본 route는 바꾸지 않는다.
 - Claude 후보는 모델별 프로필 claude-sonnet·claude-opus·claude-fable이다. 특정 모델 하나로 고정하지 않고 작업 성격과 각 한도 잔여량으로 고른다. effort는 `--select-profile ... --effort low|medium|high`로 작업에 맞게 고르되 `verified_efforts`에 있는 조합만 쓴다. fable은 현재 계정에 Fable 한도가 보고될 때만 자동 후보가 되므로 제외 사유를 사용자에게 설명한다. 미검증 조합은 setup·verify-profile(--effort 포함)로 먼저 검증한다.
 - AGY 후보는 모델별 프로필 gemini-flash·gemini-argon·agy-claude-sonnet·agy-claude-opus·agy-gpt-oss이다. Gemini뿐만 아니라 Claude 5.5 및 GPT-OSS 120B까지 작업 성격과 3대 쿼터 그룹(Gemini Models, Gemini 4 Argon, Claude and GPT models) 잔여량에 따라 선택한다. 신규 프로필은 flag 방식으로 `--effort low|medium|high`를 지원하며 검증된 조합만 사용한다. 기존 light·review는 호환성을 유지한다.
+- Grok 후보는 grok-4.5·grok-4.6·grok-4.7이다. 기본 effort는 high이고 flag 방식으로 `--effort low|medium|high`만 고른다. Orca 카탈로그의 xhigh는 자동 선택과 조정자 effort 선택에 넣지 않는다. 세 프로필은 Orca가 보고한 주간 창 하나인 quota group `grok`를 공유한다. session이 없으면 5시간 창을 만들지 않는다. simple에는 grok-4.5만 두고, grok-4.6·grok-4.7은 implementation·test·design·debug·review 후보이다. grok-4.5는 design 후보가 아니다. 모델만 바꿔 한도를 피한 것으로 보지 않는다. CLI에만 있는 모델은 기본 프로필에 넣지 않는다.
 - 조정자 선택은 `route --task-type <type> --select-profile <name> --selection-reason "<작업에 맞는 이유>"`로 확정하고 ready의 launch_args만 사용한다. review에는 `--implementation-agent`를 전달해 다른 도구를 우선한다. 선택 이유와 usage_reason을 사용자에게 설명한다. 사용자의 명시 선택은 기존 --profile/--agent/--model/--effort로 처리하며 조정자 선택으로 바꾸지 않는다.
 - 미검증·만료 후보와 보호 한도 후보를 실행하지 않는다. 사용량 unknown은 여유라는 뜻이 아니다. 도구 간 effort 값으로 품질 순위를 정하지 않는다. 지원 모델 별칭은 실제 모델 버전을 보장하지 않는다.
 - 기존 단일 경로가 필요한 경우 분배 시 scripts/kit.py route --task-type simple|implementation|test|design|debug|review를 실행한다. 복잡하면 --complexity complex를 추가한다.

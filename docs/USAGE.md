@@ -7,11 +7,12 @@
 | Codex | 공식 App Server account/read 및 account/rateLimits/read로 자동 조회 |
 | Claude | Orca `account list --json`의 rateLimits로 자동 조회(5시간·주간). claude.ai Pro/Max 로그인에서만 값이 있음 |
 | AGY | Orca `account list --json`의 rateLimits로 자동 조회(모델 그룹별 5시간·주간) |
+| Grok | Orca `account list --json`의 `rateLimits.grok`로 자동 조회. 보고된 창만 사용하며 계정 라벨은 `orca:grok` |
 
-Claude·AGY 값은 Orca가 작업자를 실행하는 활성 계정 기준으로 Orca가 주기적으로 갱신한 집계입니다. 기록 시각은 조회 시각이 아니라 Orca의 갱신 시각(updatedAt)이므로, Orca가 5분 넘게 갱신하지 못하면 미확인으로 처리됩니다. Orca가 상태 오류를 보고하면 해당 도구의 이전 관찰을 배정에 쓰지 않습니다. 수동 입력은 대체 수단으로 남아 있으며 같은 창의 유효한 자동 결과가 우선합니다.
+Claude·AGY·Grok 값은 Orca가 작업자를 실행하는 활성 계정 기준으로 Orca가 주기적으로 갱신한 집계입니다. 기록 시각은 조회 시각이 아니라 Orca의 갱신 시각(updatedAt)이므로, Orca가 5분 넘게 갱신하지 못하면 미확인으로 처리됩니다. Orca가 상태 오류를 보고하면 해당 도구의 이전 관찰을 배정에 쓰지 않습니다. 수동 입력은 대체 수단으로 남아 있으며 같은 창의 유효한 자동 결과가 우선합니다.
 
 ```sh
-python3 kit.py usage refresh              # codex, claude, agy 모두
+python3 kit.py usage refresh              # codex, claude, agy, grok 모두
 python3 kit.py usage refresh --agent agy  # 하나만
 python3 kit.py usage show
 python3 kit.py usage show --json
@@ -72,8 +73,12 @@ AGY는 모델 그룹마다 한도가 따로 있습니다. 실제 그룹 이름�
 
 Argon 한도는 플랜에 따라 별도이거나 Gemini 한도에 포함된다고 안내되므로, review는 두 그룹 중 낮은 잔여량을 사용합니다. AGY에서 Claude·GPT 계열 모델을 쓰는 프로필은 `Claude and GPT models`를 지정하세요. Claude 프로필의 기본 그룹은 `claude`이며, Orca가 Fable 주간 한도를 보고하면 `claude-fable` 그룹으로 기록됩니다.
 
+## Grok
+
+Grok 프로필의 quota group은 `grok`입니다. Orca가 `weekly`만 보고하고 `session`이 null이면 주간 창만 기록합니다. 5시간 창이 있다고 가정하지 않습니다. grok-4.5·grok-4.6·grok-4.7은 이 그룹을 공유합니다. 계정 라벨은 `orca:grok`이며 이메일은 저장하지 않습니다.
+
 ## 데이터와 한계
 
-usage.json은 로컬 설정 디렉토리에만 저장합니다. Codex 계정 식별자는 해시로, Claude·AGY는 Orca 활성 계정 라벨(예: `orca:system:host`)로 저장하고 이메일·토큰을 출력하거나 저장하지 않습니다. 수동 관찰도 다른 컴퓨터에 복사하지 마세요. 공급자가 보고한 실제 기간만 표시하며 5시간·주간 창이 모두 있다고 가정하지 않습니다.
+usage.json은 로컬 설정 디렉토리에만 저장합니다. Codex 계정 식별자는 해시로, Claude·AGY·Grok는 Orca 활성 계정 라벨(예: `orca:system:host`, `orca:grok`)로 저장하고 이메일·토큰을 출력하거나 저장하지 않습니다. 수동 관찰도 다른 컴퓨터에 복사하지 마세요. 공급자가 보고한 실제 기간만 표시하며 5시간·주간 창이 모두 있다고 가정하지 않습니다.
 
 한도 값은 실행 중에도 바뀔 수 있습니다. 두 번째 작업자 배정 전에도 갱신하지만 작업 비용 예약이나 한도 소진 방지를 보장하지 않습니다. low effort의 절약률이나 서로 다른 모델의 토큰 비용을 추정하지 않습니다. 사용량 계산은 일반 코드로 처리하고 계정·사용량을 Jev로 보내지 않습니다.

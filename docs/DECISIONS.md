@@ -7,6 +7,10 @@
 
 Claude 후보를 sonnet 하나에서 claude-sonnet/claude-opus/claude-fable로 확장한다. Fable은 계정·플랜에 따라 제공되지 않을 수 있으므로 프로필에 require_quota를 두고, 자동 경로에서는 Orca가 해당 한도 그룹을 보고할 때만 후보로 삼는다. 사용자의 명시 --profile은 이 제한을 받지 않는다. 조정자는 --select-profile에 --effort(low|medium|high, flag 방식만)를 붙여 작업별 effort를 고를 수 있으나, 검증 근거 키에 effort가 포함되므로 모델·effort 조합별 로컬 검증이 필요하다. 검증 경계와 high 초과 자동 선택 금지는 유지한다.
 
+## 2026-11-02: Grok 모델 후보
+
+Orca 작업자 id `grok`를 승인 후보에 추가한다. 프로필은 Orca 카탈로그 시드인 grok-4.5·grok-4.6·grok-4.7이며 기본 effort는 high, effort_mode는 flag다. 기본 route와 동시 작업자 상한은 유지한다. simple에는 grok-4.5만 두고 grok-4.6·grok-4.7은 implementation·test·design·debug·review 후보로 둔다. grok-4.5는 design 후보가 아니다. 사용량은 Orca `rateLimits.grok`가 보고한 창만 그룹 `grok`로 기록하고, null인 session으로 창을 만들지 않으며 이메일은 저장하지 않는다. 세 모델은 같은 그룹을 공유하므로 모델 교체를 한도 분리로 보지 않는다. `--effort` 자동 선택은 low·medium·high만 허용하고 xhigh는 제외한다. CLI에만 있는 모델 id는 기본 프로필에 넣지 않는다. 검증 근거는 컴퓨터 간 배포하지 않는다.
+
 ## 2026-11-02: AGY 멀티 모델(Gemini, Claude 5.5, GPT-OSS) 후보 확장 및 쿼터 분기
 
 AGY(Antigravity)를 단일/역할형 프로필(`light`, `review`)에 국한하지 않고, AGY CLI가 지원하는 핵심 모델군을 개별 프로필(`gemini-flash`, `gemini-argon`, `agy-claude-sonnet`, `agy-claude-opus`, `agy-gpt-oss`)로 등록하여 작업별 후보에 전면 배치한다. 신규 프로필은 모두 `effort_mode: "flag"`를 채택하여 조정자가 `--effort low|medium|high`를 작업에 맞춰 지정할 수 있게 한다. Orca의 공식 rateLimits에서 보고되는 3대 쿼터 그룹(`Gemini Models`, `Gemini 4 Argon`, `Claude and GPT models`)을 각각 모델 프로필에 매핑하여, 특정 모델군 한도가 소진되더라도 다른 모델군으로 매끄럽게 대체하거나 독립 검토를 수행할 수 있도록 한다. 기존 `light`, `review` 프로필 및 기본 route는 하위 호환성을 위해 유지한다.

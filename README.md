@@ -1,6 +1,6 @@
 # Orca Orchestration Kit
 
-**Claude·Codex·AGY가 작업에 맞는 모델과 추론 강도로 함께 일하도록 돕는 스킬입니다.**
+**Claude·Codex·AGY·Grok가 작업에 맞는 모델과 추론 강도로 함께 일하도록 돕는 스킬입니다.**
 
 “기능 구현과 검토를 나눠서 진행하고 싶은데, 매번 도구와 모델을 직접 정하기는 번거롭다”면 이 프로젝트를 사용할 수 있습니다. 평소 쓰는 에이전트에게 `orca-team`을 호출하면, 그 에이전트가 작업을 나누고 Orca로 작업자를 실행해 결과를 확인합니다.
 
@@ -18,7 +18,7 @@ Orca를 설치하는 것과 이 스킬을 설치하는 것은 서로 다른 단�
 flowchart TD
     U[사용자: Orca 안의 에이전트 대화] --> S[orca-team: 작업 분류와 프로필 선택]
     S --> O[Orca: 작업 공간과 작업자 실행]
-    O --> A[Claude · Codex · AGY 작업자]
+    O --> A[Claude · Codex · AGY · Grok 작업자]
     A --> R[조정자: 결과 검증 · 통합 · 완료 보고]
 ```
 
@@ -39,10 +39,10 @@ flowchart TD
 | Git | 이 저장소를 받고 업데이트합니다. | [Git 설치](https://git-scm.com/downloads) |
 | Python 3.9+ | 설치·진단·모델 선택 도구를 실행합니다. 추가 패키지는 필요 없습니다. | [Python 다운로드](https://www.python.org/downloads/) |
 | Orca 앱과 CLI | 작업 공간과 에이전트를 실행합니다. | [Orca 설치](https://www.onorca.dev/docs/install) |
-| 사용할 에이전트 CLI와 로그인 | 실제 작업을 수행합니다. | [Codex](https://learn.chatgpt.com/docs/codex/cli) · [Claude Code](https://code.claude.com/docs/en/quickstart) · [AGY](https://antigravity.google/docs/getting-started?tab=cli) |
+| 사용할 에이전트 CLI와 로그인 | 실제 작업을 수행합니다. | [Codex](https://learn.chatgpt.com/docs/codex/cli) · [Claude Code](https://code.claude.com/docs/en/quickstart) · [AGY](https://antigravity.google/docs/getting-started?tab=cli) · Grok CLI (`grok`) |
 | Jev 인증 — 선택 | 애매한 작업 분류를 보조합니다. 첫 시작에는 없어도 됩니다. | [Jev 안내](skills/orca-team/references/jev.md) |
 
-세 에이전트를 모두 준비할 필요는 없습니다. **Codex·Claude·AGY 중 익숙한 도구 하나로 시작**하세요. 기본 네 프로필을 그대로 쓰려면 Codex와 AGY가 필요합니다. Claude만 사용할 때는 해당 도구에서 지원하는 모델을 확인해 로컬 프로필을 추가합니다.
+네 에이전트를 모두 준비할 필요는 없습니다. **Codex·Claude·AGY·Grok 중 익숙한 도구 하나로 시작**하세요. 기본 네 프로필을 그대로 쓰려면 Codex와 AGY가 필요합니다. Claude나 Grok만 사용할 때는 해당 도구에서 지원하는 모델을 확인해 로컬 프로필을 추가합니다. Grok 기본 후보는 `grok-4.5`·`grok-4.6`·`grok-4.7`이며, 검증 전에는 자동 배정되지 않습니다.
 
 ## 이미 환경이 준비됐다면
 
@@ -55,7 +55,7 @@ python3 kit.py install
 python3 kit.py setup --agent codex
 ```
 
-Windows PowerShell에서는 `python3` 대신 `py -3`를 사용합니다. Claude는 `--agent claude`, AGY는 `--agent agy`를 선택하세요.
+Windows PowerShell에서는 `python3` 대신 `py -3`를 사용합니다. Claude는 `--agent claude`, AGY는 `--agent agy`, Grok는 `--agent grok`를 선택하세요.
 
 다음으로 **Orca에서 작업할 프로젝트를 열고 새 에이전트 대화**를 시작합니다. `setup`이 출력한 요청문을 붙여 넣으면 에이전트가 첫 모델 검증을 안내합니다. `setup` 자체는 로그인·권한 변경·작업자 실행을 하지 않습니다.
 
@@ -75,7 +75,7 @@ Windows PowerShell에서는 `python3` 대신 `py -3`를 사용합니다. Claude�
 - 검증된 조합만 자동 배정합니다. 7일이 지나거나 실행 파일이 바뀌면 다시 확인합니다.
 - 품질 실패 시 종료된 작업에 한해 한 번만, high 이하의 지정 상향 프로필로 전환합니다.
 - 명시한 모델은 임의 대체하지 않습니다. 로그인·네트워크 문제를 모델 상향으로 해결하지 않습니다.
-- 모델 목록·최저 비용은 자동 계산하지 않습니다. Codex·Claude·AGY 잔여량은 공식 조회(Codex App Server, Orca 집계)로 반영합니다.
+- 모델 목록·최저 비용은 자동 계산하지 않습니다. Codex·Claude·AGY·Grok 잔여량은 공식 조회(Codex App Server, Orca 집계)로 반영합니다.
 
 [프로필 설정과 상향 규칙 자세히 보기](docs/ROUTING.md)
 
@@ -121,7 +121,7 @@ python3 kit.py setup --agent codex
 
 | 문서 | 내용 |
 |---|---|
-| [처음 시작하기](docs/GETTING_STARTED.md) | 준비·설치·세 도구별 첫 실행·문제 해결 |
+| [처음 시작하기](docs/GETTING_STARTED.md) | 준비·설치·도구별 첫 실행·문제 해결 |
 | [프로필 운영](docs/ROUTING.md) | 모델 설정, 검증 기록, 상향 규칙 |
 | [계획](docs/PLAN.md) / [진행 현황](docs/PROGRESS.md) | 구현 범위와 남은 작업 |
 | [검증 기록](docs/VALIDATION.md) | 실제 확인한 환경과 제한 |
@@ -130,4 +130,4 @@ python3 kit.py setup --agent codex
 
 [MIT 라이선스](LICENSE)로 제공합니다. 외부 도구·모델·API는 각 공급자의 이용 조건을 따릅니다. [코드 출처 안내](docs/PROVENANCE.md)도 확인해주세요.
 
-작업별 Claude·Codex·AGY 후보 조회와 선택은 [라우팅 정책](docs/ROUTING.md#작업별-후보-선택-2026-11-02)을 참고하세요. 세 도구를 항상 함께 실행하지 않으며 배정 전 검증 상태와 구독 잔여량을 확인합니다.
+작업별 Claude·Codex·AGY·Grok 후보 조회와 선택은 [라우팅 정책](docs/ROUTING.md#작업별-후보-선택-2026-11-02)을 참고하세요. 네 도구를 항상 함께 실행하지 않으며 배정 전 검증 상태와 구독 잔여량을 확인합니다.

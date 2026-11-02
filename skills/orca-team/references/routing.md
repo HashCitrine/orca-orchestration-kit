@@ -75,3 +75,13 @@ AGY는 Gemini뿐만 아니라 Claude 5.5 및 GPT-OSS 120B까지 지원하는 런
 - 기존 `light`(gemini-3.8-flash-low, embedded)와 `review`(gemini-4-argon-high, embedded)는 레거시 호환성을 위해 유지됩니다.
 
 AGY 모델의 effort는 조정자가 `--select-profile <profile> --effort low|medium|high`로 선택할 수 있으며, 해당 조합이 로컬 `model-evidence.json`에 검증되어 있어야 ready입니다. Orca의 rateLimits에서 보고되는 세 개 버킷(`Gemini Models`, `Gemini 4 Argon`, `Claude and GPT models`)의 잔여량에 따라 독립적으로 보호/대체됩니다. 구현 도구와 동일한 `agent: agy`인 경우 독립 리뷰가 아님을 판정합니다.
+
+## Grok 모델 후보 (2026-11-02)
+
+Orca 작업자 id는 `grok`이며 별칭 변환은 없습니다. 기본 route는 유지하고, Orca 카탈로그 시드에 있는 모델만 승인 후보로 둡니다.
+
+- `grok-4.5`: `grok-4.5` (high, flag). simple·implementation·test·debug·review 후보. design 후보는 아닙니다.
+- `grok-4.6`: `grok-4.6` (high, flag). implementation·test·design·debug·review 후보.
+- `grok-4.7`: `grok-4.7` (high, flag). implementation·test·design·debug·review 후보. Orca 기본 모델입니다.
+
+세 프로필의 quota group은 `grok`입니다. Orca `rateLimits.grok`가 보고한 창만 기록하며, `session`이 null이면 5시간 창을 만들지 않습니다. 모델이 달라도 같은 그룹이므로 한도가 분리되지 않습니다. effort는 `--select-profile <profile> --effort low|medium|high`만 허용합니다. 카탈로그가 4.6·4.7에 `xhigh`를 두더라도 자동 선택과 조정자 effort 선택에는 넣지 않습니다. `grok-4.7-build-fast`처럼 CLI에만 있고 시드 카탈로그에 없는 id는 기본 프로필에 넣지 않습니다. 구현 도구와 동일한 `agent: grok`이면 독립 리뷰가 아닙니다.

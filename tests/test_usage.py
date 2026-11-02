@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -96,6 +97,29 @@ class UsageTests(unittest.TestCase):
         alt={**self.p,'agent':'agy','profile':'review','quota_groups':['Gemini Models','Gemini 4 Argon']}
         selected=usage.select(self.p,{'usage':{'alternatives':{'design':['review']}}},self.state,'design',lambda n:alt)
         self.assertEqual((selected['profile'],selected['usage']['state']),('review','normal'))
+    def test_orca_grok_weekly_only(self):
+        now=usage.time.time();ms=lambda t:t*1000
+        payload={'ok':True,'result':{'rateLimits':{'grok':{
+            'status':'ok','error':None,'updatedAt':ms(now-20),'session':None,
+            'weekly':{'usedPercent':25,'windowMinutes':10080,'resetsAt':ms(now+86400)},
+            'usageMetadata':{'authProvenance':'person@example.com'}}}}}
+        result=usage.refresh(self.state,{},'grok',lambda:payload)
+        self.assertEqual(result['status'],'updated')
+        self.assertEqual(len(result['windows']),1)
+        window=result['windows'][0]
+        self.assertEqual((window['group'],window['remaining_percent'],window['window_minutes']),( 'grok',75,10080))
+        self.assertEqual(usage.load(self.state)['active']['grok'],'orca:grok')
+        self.assertNotIn('person@example.com',json.dumps(usage.load(self.state)))
+        profile={'agent':'grok','quota_groups':['grok']}
+        self.assertEqual(usage.status(self.state,profile,{})['state'],'normal')
+        low={'ok':True,'result':{'rateLimits':{'grok':{
+            'status':'ok','error':None,'updatedAt':ms(now-10),'session':None,
+            'weekly':{'usedPercent':96,'windowMinutes':10080,'resetsAt':ms(now+86400)}}}}}
+        usage.refresh(self.state,{},'grok',lambda:low)
+        self.assertEqual(usage.status(self.state,profile,{})['state'],'protected')
+        failed={'ok':True,'result':{'rateLimits':{'grok':{'status':'error','error':'failed','updatedAt':ms(now)}}}}
+        self.assertEqual(usage.refresh(self.state,{},'grok',lambda:failed)['status'],'unknown')
+        self.assertNotIn('grok',usage.load(self.state)['active'])
     def test_input_validation(self):
         for value in [-1,101,float('nan')]:
             with self.assertRaises(ValueError):self.obs(value)

@@ -88,3 +88,8 @@ in_progress: 작업별 승인 후보 조회·선택, Claude 프로필과 구독 
 
 현재: done. AGY(Antigravity)를 단일/역할형 프로필(`light`, `review`)에서 모델별 프로필(`gemini-flash`, `gemini-argon`, `agy-claude-sonnet`, `agy-claude-opus`, `agy-gpt-oss`)로 확장하고, flag effort 지원 및 작업별 후보(candidates) 전면 배치 완료. Orca 공식 집계의 3대 쿼터 그룹(`Gemini Models`, `Gemini 4 Argon`, `Claude and GPT models`)과 연동하여 특정 모델 한도 소진 시 유연한 우회 및 크로스 검증을 지원한다.
 검증: unittest 41개 통과, agy CLI 실제 실행 검증(gemini-3.8-flash, gemini-4-argon, claude-sonnet-5-5, claude-opus-5-5, gpt-oss-120b), 쿼터 그룹 격리 및 effort 선택 검증 완료.
+
+## GROK-MODELS-001 (2026-11-02)
+
+현재: 소스에 Grok 후보 grok-4.5·grok-4.6·grok-4.7을 추가했다. 기본 route와 작업자 상한은 유지한다. 사용량은 Orca `rateLimits.grok`의 보고된 창만 그룹 `grok`로 기록한다. xhigh와 CLI 전용 모델 id는 기본 선택에 넣지 않는다.
+검증: unittest 44개 통과. 읽기 전용 Dispatch, verify-profile, 설치본 `kit.py update`는 포함하지 않는다.

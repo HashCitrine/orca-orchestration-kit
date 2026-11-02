@@ -94,7 +94,7 @@ class CandidateTests(unittest.TestCase):
         before=list(self.state.rglob('*'))
         result=subprocess.run(cmd+['--candidates'],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(len(json.loads(result.stdout)['candidates']),8)
+        self.assertEqual(len(json.loads(result.stdout)['candidates']),10)
         self.assertEqual(before,list(self.state.rglob('*')))
         for flags in [['--candidates','--profile','deep'],['--select-profile','claude-opus'],['--selection-reason','alone']]:
             self.assertNotEqual(subprocess.run(cmd+flags,capture_output=True).returncode,0)
@@ -220,3 +220,25 @@ class CandidateTests(unittest.TestCase):
         self.assertEqual(kit.usage.status(self.state, self.profiles['agy-claude-sonnet'], {})['state'], 'protected')
         self.assertEqual(kit.usage.status(self.state, self.profiles['agy-gpt-oss'], {})['state'], 'protected')
         self.assertEqual(kit.usage.status(self.state, self.profiles['gemini-flash'], {})['state'], 'normal')
+
+    def test_grok_candidates_and_launch(self):
+        from test_kit import kit
+        for name, model in [('grok-4.5','grok-4.5'),('grok-4.6','grok-4.6'),('grok-4.7','grok-4.7')]:
+            self.assertEqual(self.profiles[name]['agent'], 'grok')
+            self.assertEqual(self.profiles[name]['model'], model)
+            self.assertEqual(self.profiles[name]['effort'], 'high')
+            self.assertEqual(self.profiles[name]['quota_groups'], ['grok'])
+        simple = kit.candidate_names({}, 'simple')
+        self.assertIn('grok-4.5', simple)
+        self.assertNotIn('grok-4.6', simple)
+        self.assertNotIn('grok-4.7', simple)
+        design = set(kit.candidate_names({}, 'design'))
+        self.assertTrue({'grok-4.6','grok-4.7'} <= design)
+        self.assertNotIn('grok-4.5', design)
+        self.assertEqual(kit.route_candidates({}, self.state, 'design')['baseline_profile'], 'deep')
+        kit.usage.observe(self.state, 'grok', 'grok', 'grok', 80, 10080, time.time()+1000)
+        res = self.select('grok-4.7', task='design')
+        self.assertEqual(res['launch_args'], ['--agent','grok','--model','grok-4.7','--effort','high'])
+        self.assertFalse(self.select('grok-4.7', task='review', implementation_agent='grok')['review_independence'])
+        with self.assertRaises(ValueError):
+            self.select('grok-4.7', task='design', effort='xhigh')

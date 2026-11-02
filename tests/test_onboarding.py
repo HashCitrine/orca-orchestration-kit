@@ -44,6 +44,12 @@ class OnboardingTests(unittest.TestCase):
         self.assertFalse(result['checks']['orca_connected']);self.assertFalse(result['checks']['skill_installed'])
         self.assertEqual(result['profiles'],{'claude-sonnet':'blocked','claude-opus':'blocked','claude-fable':'blocked'});self.assertTrue(result['next_steps'])
         self.assertTrue((self.state/'setup-observation.json').exists())
+    def test_setup_grok_reports_unverified_profiles(self):
+        with patch.object(kit,'probe',return_value={'available':False}),patch.object(kit,'orca_read',side_effect=ValueError('offline')),patch.object(kit.shutil,'which',return_value=None):
+            result=kit.setup(self.root,{},self.state,'grok')
+        self.assertEqual(result['profiles'],{'grok-4.5':'blocked','grok-4.6':'blocked','grok-4.7':'blocked'})
+        self.assertIn('grok',result['prompt'])
+
     def test_setup_three_agents(self):
         for agent in ['codex','claude','agy']:
             with patch.object(kit,'probe',return_value={'available':True,'help_ok':True}),patch.object(kit,'orca_read',return_value={'result':{'runtime':{'reachable':True}}}):

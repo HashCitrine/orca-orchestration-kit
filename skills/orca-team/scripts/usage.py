@@ -118,11 +118,20 @@ def orca_window(agent,account,group,window,updated):
 def orca_records(payload,agent):
     # Orca reports the account it launches workers with; observed_at is Orca's own refresh time.
     limits=payload['result']['rateLimits']
-    entry=limits['claude' if agent=='claude' else 'antigravity']
+    if agent=='grok':
+        entry=limits['grok']
+        account='orca:grok'
+        names=('session','weekly')
+    elif agent=='claude':
+        entry=limits['claude']
+    else:
+        entry=limits['antigravity']
     if not isinstance(entry,dict) or entry.get('status')!='ok' or entry.get('error'):raise ValueError('Orca quota unavailable')
     updated=float(entry['updatedAt'])/1000
     if not math.isfinite(updated):raise ValueError('invalid provider quota')
-    if agent=='claude':
+    if agent=='grok':
+        windows=[('grok',entry.get(k)) for k in names]
+    elif agent=='claude':
         active=payload['result'].get('claude',{}).get('activeAccountId') or 'system'
         account='orca:'+str(active)+':'+str((limits.get('claudeTarget') or {}).get('runtime','host'))
         windows=[('claude',entry.get(k)) for k in ('session','weekly')]+[('claude-fable',entry.get('fableWeekly'))]
@@ -133,7 +142,7 @@ def orca_records(payload,agent):
 
 
 def refresh(state,config,agent='codex',orca_reader=None):
-    if agent not in ('codex','claude','agy'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+    if agent not in ('codex','claude','agy','grok'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
     try:
         if agent!='codex':
             if orca_reader is None:raise ValueError('Orca reader unavailable')
