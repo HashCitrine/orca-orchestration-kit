@@ -93,3 +93,5 @@ Claude/AGY quota validation: 28 automated tests passed (Orca payload conversion,
 - `kit.py update`: managed_files 24, removed_files 0. 세 설치본과 저장소 skills/orca-team 일치 확인.
 - 설치본 `usage refresh --agent claude` 후 `route --task-type design --candidates`: claude-sonnet ready(verified_efforts high, 기존 sonnet/high 근거 재사용), claude-opus는 검증 근거 없음으로 blocked, claude-fable은 검증 근거 없음 + `required quota not reported for this account: claude-fable`로 blocked. 현재 계정의 Orca 응답은 fableWeekly=null.
 - 미실행: opus/fable 및 sonnet 외 effort 조합의 실제 읽기 전용 Dispatch 검증. 작업자 실행이 필요하므로 사용자 요청 시 진행한다.
+- 추가 검증(2026-11-02): `setup --agent claude` 후 Run `run_273bb9f05d35`, Dispatch `ctx_6efaf931c338`: routing.json만 읽는 작업 성공, 저장소 변경 없음. launch.effective = claude / opus / high. `verify-profile --profile claude-opus --dispatch ctx_6efaf931c338`: verified. worker_done 처리·ack, worker-release 후 resource released 확인.
+- 설치본 `route --candidates`(implementation/design/review): claude-sonnet·claude-opus ready(verified_efforts high). claude-fable은 현재 계정에 Fable 한도 미보고로 제외(미검증). `--select-profile claude-opus` 실행 인자 `--agent claude --model opus --effort high` 확인.
