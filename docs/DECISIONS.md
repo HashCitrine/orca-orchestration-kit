@@ -6,3 +6,7 @@
 ## 2026-11-02: Claude 모델별 후보, 계정별 Fable 가용성, 조정자 effort 선택
 
 Claude 후보를 sonnet 하나에서 claude-sonnet/claude-opus/claude-fable로 확장한다. Fable은 계정·플랜에 따라 제공되지 않을 수 있으므로 프로필에 require_quota를 두고, 자동 경로에서는 Orca가 해당 한도 그룹을 보고할 때만 후보로 삼는다. 사용자의 명시 --profile은 이 제한을 받지 않는다. 조정자는 --select-profile에 --effort(low|medium|high, flag 방식만)를 붙여 작업별 effort를 고를 수 있으나, 검증 근거 키에 effort가 포함되므로 모델·effort 조합별 로컬 검증이 필요하다. 검증 경계와 high 초과 자동 선택 금지는 유지한다.
+
+## 2026-11-02: AGY 멀티 모델(Gemini, Claude 5.5, GPT-OSS) 후보 확장 및 쿼터 분기
+
+AGY(Antigravity)를 단일/역할형 프로필(`light`, `review`)에 국한하지 않고, AGY CLI가 지원하는 핵심 모델군을 개별 프로필(`gemini-flash`, `gemini-argon`, `agy-claude-sonnet`, `agy-claude-opus`, `agy-gpt-oss`)로 등록하여 작업별 후보에 전면 배치한다. 신규 프로필은 모두 `effort_mode: "flag"`를 채택하여 조정자가 `--effort low|medium|high`를 작업에 맞춰 지정할 수 있게 한다. Orca의 공식 rateLimits에서 보고되는 3대 쿼터 그룹(`Gemini Models`, `Gemini 4 Argon`, `Claude and GPT models`)을 각각 모델 프로필에 매핑하여, 특정 모델군 한도가 소진되더라도 다른 모델군으로 매끄럽게 대체하거나 독립 검토를 수행할 수 있도록 한다. 기존 `light`, `review` 프로필 및 기본 route는 하위 호환성을 위해 유지한다.

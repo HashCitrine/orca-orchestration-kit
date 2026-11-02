@@ -94,7 +94,7 @@ class CandidateTests(unittest.TestCase):
         before=list(self.state.rglob('*'))
         result=subprocess.run(cmd+['--candidates'],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(len(json.loads(result.stdout)['candidates']),5)
+        self.assertEqual(len(json.loads(result.stdout)['candidates']),8)
         self.assertEqual(before,list(self.state.rglob('*')))
         for flags in [['--candidates','--profile','deep'],['--select-profile','claude-opus'],['--selection-reason','alone']]:
             self.assertNotEqual(subprocess.run(cmd+flags,capture_output=True).returncode,0)
@@ -155,3 +155,68 @@ class CandidateTests(unittest.TestCase):
         selected=self.select(task='review',implementation_agent='agy')
         self.assertEqual(selected['profile'],'deep')
         self.assertTrue(selected['review_independence'])
+
+    def test_agy_multimodel_candidates(self):
+        from test_kit import kit
+        agy_profiles = ['gemini-flash','gemini-argon','agy-claude-sonnet','agy-claude-opus','agy-gpt-oss']
+        for name in agy_profiles:
+            self.assertIn(name, self.profiles)
+            self.assertEqual(self.profiles[name]['agent'], 'agy')
+            self.assertEqual(self.profiles[name]['effort_mode'], 'flag')
+
+        # simple task includes light and gemini-flash, but not heavy models
+        simple_candidates = kit.candidate_names({}, 'simple')
+        self.assertIn('gemini-flash', simple_candidates)
+        self.assertNotIn('gemini-argon', simple_candidates)
+        self.assertNotIn('agy-claude-sonnet', simple_candidates)
+
+        # implementation includes gemini-flash, gemini-argon, agy-claude-sonnet, agy-gpt-oss
+        impl_candidates = kit.candidate_names({}, 'implementation')
+        self.assertTrue({'gemini-flash','gemini-argon','agy-claude-sonnet','agy-gpt-oss'} <= set(impl_candidates))
+
+        # design includes gemini-argon, agy-claude-opus, agy-claude-sonnet
+        design_candidates = kit.candidate_names({}, 'design')
+        self.assertTrue({'gemini-argon','agy-claude-opus','agy-claude-sonnet'} <= set(design_candidates))
+
+        # Launch args use agent 'antigravity' and flag effort
+        for group in ['Gemini Models','Gemini 4 Argon','Claude and GPT models']:
+            kit.usage.observe(self.state, 'agy', 'agy', group, 80, 300, time.time()+1000)
+        res = self.select('gemini-flash', task='implementation')
+        self.assertEqual(res['launch_args'], ['--agent','antigravity','--model','gemini-3.8-flash','--effort','medium'])
+
+        res_claude = self.select('agy-claude-sonnet', task='implementation')
+        self.assertEqual(res_claude['launch_args'], ['--agent','antigravity','--model','claude-sonnet-5-5','--effort','high'])
+
+    def test_agy_coordinator_effort_selection(self):
+        from test_kit import kit
+        for group in ['Gemini Models','Gemini 4 Argon','Claude and GPT models']:
+            kit.usage.observe(self.state, 'agy', 'agy', group, 80, 300, time.time()+1000)
+
+        # Before low effort is verified for gemini-flash, selecting low is blocked
+        self.assertEqual(self.select('gemini-flash', task='implementation', effort='low')['status'], 'blocked')
+
+        # Verify low effort
+        self.evidence[kit.profile_key({**self.profiles['gemini-flash'], 'effort': 'low'})] = dict(self.evidence[kit.profile_key(self.profiles['gemini-flash'])])
+        self.save()
+
+        res = self.select('gemini-flash', task='implementation', effort='low')
+        self.assertEqual(res['status'], 'ready')
+        self.assertEqual(res['launch_args'][-2:], ['--effort', 'low'])
+
+    def test_agy_quota_isolation_across_groups(self):
+        from test_kit import kit
+        # Observe normal Gemini Models and Claude and GPT models, but protected Argon
+        kit.usage.observe(self.state, 'agy', 'agy', 'Gemini Models', 80, 300, time.time()+1000)
+        kit.usage.observe(self.state, 'agy', 'agy', 'Claude and GPT models', 80, 300, time.time()+1000)
+        kit.usage.observe(self.state, 'agy', 'agy', 'Gemini 4 Argon', 4, 10080, time.time()+1000)
+
+        # Argon is blocked due to protected quota, but gemini-flash and agy-claude-sonnet are normal
+        self.assertEqual(kit.usage.status(self.state, self.profiles['gemini-argon'], {})['state'], 'protected')
+        self.assertEqual(kit.usage.status(self.state, self.profiles['gemini-flash'], {})['state'], 'normal')
+        self.assertEqual(kit.usage.status(self.state, self.profiles['agy-claude-sonnet'], {})['state'], 'normal')
+
+        # When Claude and GPT models is protected, agy-claude and agy-gpt are protected, but gemini-flash is unaffected
+        kit.usage.observe(self.state, 'agy', 'agy', 'Claude and GPT models', 3, 300, time.time()+1000)
+        self.assertEqual(kit.usage.status(self.state, self.profiles['agy-claude-sonnet'], {})['state'], 'protected')
+        self.assertEqual(kit.usage.status(self.state, self.profiles['agy-gpt-oss'], {})['state'], 'protected')
+        self.assertEqual(kit.usage.status(self.state, self.profiles['gemini-flash'], {})['state'], 'normal')

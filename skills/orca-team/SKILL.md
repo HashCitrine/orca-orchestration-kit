@@ -26,6 +26,7 @@ description: Coordinate Claude, Codex and agy through Orca when the user request
 - 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 사용량 데이터는 Jev에 보내지 않는다.
 - 작은 작업은 직접 처리한다. 분배가 필요하면 `route --task-type <type> --candidates`로 작업별 승인 후보를 조회한다. Claude·Codex·AGY 중 작업 내용, 변경 범위, 검증 기준, 독립 검토 필요성과 확인된 구독 잔여량을 보고 매번 선택한다. 세 도구의 동시 사용·균등 배분이나 고정 역할은 강제하지 않는다.
 - Claude 후보는 모델별 프로필 claude-sonnet·claude-opus·claude-fable이다. 특정 모델 하나로 고정하지 않고 작업 성격과 각 한도 잔여량으로 고른다. effort는 `--select-profile ... --effort low|medium|high`로 작업에 맞게 고르되 `verified_efforts`에 있는 조합만 쓴다. fable은 현재 계정에 Fable 한도가 보고될 때만 자동 후보가 되므로 제외 사유를 사용자에게 설명한다. 미검증 조합은 setup·verify-profile(--effort 포함)로 먼저 검증한다.
+- AGY 후보는 모델별 프로필 gemini-flash·gemini-argon·agy-claude-sonnet·agy-claude-opus·agy-gpt-oss이다. Gemini뿐만 아니라 Claude 5.5 및 GPT-OSS 120B까지 작업 성격과 3대 쿼터 그룹(Gemini Models, Gemini 4 Argon, Claude and GPT models) 잔여량에 따라 선택한다. 신규 프로필은 flag 방식으로 `--effort low|medium|high`를 지원하며 검증된 조합만 사용한다. 기존 light·review는 호환성을 유지한다.
 - 조정자 선택은 `route --task-type <type> --select-profile <name> --selection-reason "<작업에 맞는 이유>"`로 확정하고 ready의 launch_args만 사용한다. review에는 `--implementation-agent`를 전달해 다른 도구를 우선한다. 선택 이유와 usage_reason을 사용자에게 설명한다. 사용자의 명시 선택은 기존 --profile/--agent/--model/--effort로 처리하며 조정자 선택으로 바꾸지 않는다.
 - 미검증·만료 후보와 보호 한도 후보를 실행하지 않는다. 사용량 unknown은 여유라는 뜻이 아니다. 도구 간 effort 값으로 품질 순위를 정하지 않는다. 지원 모델 별칭은 실제 모델 버전을 보장하지 않는다.
 - 기존 단일 경로가 필요한 경우 분배 시 scripts/kit.py route --task-type simple|implementation|test|design|debug|review를 실행한다. 복잡하면 --complexity complex를 추가한다.

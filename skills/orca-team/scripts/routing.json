@@ -35,6 +35,52 @@
         "Gemini 4 Argon"
       ]
     },
+    "gemini-flash": {
+      "agent": "agy",
+      "model": "gemini-3.8-flash",
+      "effort": "medium",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "Gemini Models"
+      ]
+    },
+    "gemini-argon": {
+      "agent": "agy",
+      "model": "gemini-4-argon",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "Gemini Models",
+        "Gemini 4 Argon"
+      ]
+    },
+    "agy-claude-sonnet": {
+      "agent": "agy",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "Claude and GPT models"
+      ]
+    },
+    "agy-claude-opus": {
+      "agent": "agy",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "Claude and GPT models"
+      ]
+    },
+    "agy-gpt-oss": {
+      "agent": "agy",
+      "model": "gpt-oss-120b",
+      "effort": "medium",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "Claude and GPT models"
+      ]
+    },
     "claude-sonnet": {
       "agent": "claude",
       "model": "sonnet",
@@ -76,11 +122,16 @@
   "candidates": {
     "simple": [
       "light",
+      "gemini-flash",
       "standard"
     ],
     "implementation": [
       "standard",
       "deep",
+      "gemini-flash",
+      "gemini-argon",
+      "agy-claude-sonnet",
+      "agy-gpt-oss",
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
@@ -89,6 +140,10 @@
     "test": [
       "standard",
       "deep",
+      "gemini-flash",
+      "gemini-argon",
+      "agy-claude-sonnet",
+      "agy-gpt-oss",
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
@@ -96,6 +151,9 @@
     ],
     "design": [
       "deep",
+      "gemini-argon",
+      "agy-claude-opus",
+      "agy-claude-sonnet",
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
@@ -103,6 +161,11 @@
     ],
     "debug": [
       "deep",
+      "gemini-argon",
+      "gemini-flash",
+      "agy-claude-opus",
+      "agy-claude-sonnet",
+      "agy-gpt-oss",
       "claude-sonnet",
       "claude-opus",
       "claude-fable",
@@ -110,6 +173,10 @@
     ],
     "review": [
       "review",
+      "gemini-argon",
+      "agy-claude-opus",
+      "agy-claude-sonnet",
+      "agy-gpt-oss",
       "claude-sonnet",
       "claude-opus",
       "claude-fable",

@@ -62,3 +62,16 @@ python3 kit.py route --task-type review --candidates --implementation-agent code
 배정 직전 usage refresh를 실행합니다. 잔여량 20% 이하는 별도 한도에 여유가 확인된 대안을 우선하고, 5% 이하는 대안이 없으면 blocked입니다. unknown은 여유로 취급하지 않으며, 알려진 제한이 없을 때 기존 정책대로 선택은 가능합니다. 독립 리뷰에서는 구현과 다른 도구를 우선하고 동일 도구 결과를 독립 검토로 보고하지 않습니다.
 
 Claude 후보는 CLI 도움말에서 지원하는 별칭별 프로필 `claude-sonnet`(sonnet/high), `claude-opus`(opus/high), `claude-fable`(fable/high)입니다. simple을 제외한 모든 작업 유형의 승인 후보이며, 어느 모델을 쓸지는 조정자가 작업 내용과 잔여량을 보고 매번 선택합니다. `claude-fable`은 `claude`와 `claude-fable` 한도 그룹 중 낮은 잔여량을 사용합니다. Fable은 플랜·계정에 따라 제공되지 않을 수 있으므로 `require_quota: true`입니다. 자동 경로(route, `--candidates`, `--select-profile`)에서는 Orca가 현재 계정의 Fable 주간 한도(fableWeekly)를 보고할 때만 후보가 되며, 보고되지 않으면 `required quota not reported` 사유로 제외됩니다. 사용자가 `--profile claude-fable`로 명시하면 이 제한 없이 검증 근거만 확인합니다. 계정을 바꾸면 usage refresh 결과에 따라 자동으로 다시 판단됩니다. effort는 조정자가 `--select-profile <claude-*> --effort low|medium|high`로 작업에 맞게 고를 수 있습니다. 해당 모델·effort 조합이 검증되어 있어야 ready이며, `--candidates` 결과의 `verified_efforts`에 검증된 effort가 표시됩니다. 새 조합은 setup 후 그 effort로 작은 읽기 전용 작업을 실행하고 `verify-profile --profile <name> --effort <effort> --dispatch <id>`로 등록합니다. high 초과 effort는 자동 선택하지 않습니다. 조합마다 setup과 새 읽기 전용 Dispatch의 성공 후 verify-profile 등록 전에는 blocked입니다. 별칭을 특정 버전으로 추측하지 않으며 launch.effective 또는 공급자 응답으로 확인한 범위만 보고합니다. 모든 컴퓨터에서 로컬 검증이 필요합니다.
+
+## AGY 멀티 모델 후보 (2026-11-02)
+
+AGY는 Gemini뿐만 아니라 Claude 5.5 및 GPT-OSS 120B까지 지원하는 런타임으로, 고정된 역할 대신 모델별 프로필과 flag effort 방식을 사용해 작업 후보군에 전면 배치됩니다:
+
+- `gemini-flash`: `gemini-3.8-flash` (medium, flag, `Gemini Models` 쿼터). 빠른 프로토타이핑, 대용량 컨텍스트 처리, simple/implementation/test/debug 후보.
+- `gemini-argon`: `gemini-4-argon` (high, flag, `Gemini Models` 및 `Gemini 4 Argon` 주간 쿼터). 심층 아키텍처 설계, complex/debug/review/implementation 후보.
+- `agy-claude-sonnet`: `claude-sonnet-5-5` (high, flag, `Claude and GPT models` 쿼터). 네이티브 Claude CLI 한도 소진 시 대체재 또는 구현/테스트/리뷰 후보.
+- `agy-claude-opus`: `claude-opus-5-5` (high, flag, `Claude and GPT models` 쿼터). 심층 설계/리팩토링/디버그 후보.
+- `agy-gpt-oss`: `gpt-oss-120b` (medium, flag, `Claude and GPT models` 쿼터). 오픈 가중치 기반 구현/테스트/검토 후보.
+- 기존 `light`(gemini-3.8-flash-low, embedded)와 `review`(gemini-4-argon-high, embedded)는 레거시 호환성을 위해 유지됩니다.
+
+AGY 모델의 effort는 조정자가 `--select-profile <profile> --effort low|medium|high`로 선택할 수 있으며, 해당 조합이 로컬 `model-evidence.json`에 검증되어 있어야 ready입니다. Orca의 rateLimits에서 보고되는 세 개 버킷(`Gemini Models`, `Gemini 4 Argon`, `Claude and GPT models`)의 잔여량에 따라 독립적으로 보호/대체됩니다. 구현 도구와 동일한 `agent: agy`인 경우 독립 리뷰가 아님을 판정합니다.
