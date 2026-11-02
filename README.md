@@ -129,3 +129,5 @@ python3 kit.py setup --agent codex
 ## 라이선스
 
 [MIT 라이선스](LICENSE)로 제공합니다. 외부 도구·모델·API는 각 공급자의 이용 조건을 따릅니다. [코드 출처 안내](docs/PROVENANCE.md)도 확인해주세요.
+
+작업별 Claude·Codex·AGY 후보 조회와 선택은 [라우팅 정책](docs/ROUTING.md#작업별-후보-선택-2026-11-02)을 참고하세요. 세 도구를 항상 함께 실행하지 않으며 배정 전 검증 상태와 구독 잔여량을 확인합니다.

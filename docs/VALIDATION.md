@@ -74,3 +74,22 @@ Implemented Codex read-only App Server quota refresh, manual observations, local
 Quota validation: 25 automated tests and skill validation passed. Codex account/rateLimits/read succeeded without inference work; missing time windows were not inferred. Local alternatives were configured, and installed skill copies were updated. Claude/AGY quota automation and precise usage reservations remain outside this implementation.
 
 Claude/AGY quota validation: 28 automated tests passed (Orca payload conversion, ms timestamps, updatedAt freshness, AGY group minimum, Orca error isolation, AGY alternative selection). Real macOS run: `usage refresh` returned updated for codex, claude and agy; `usage show` reported light, standard, deep and review as normal with provider windows; `route --task-type review` included the AGY group windows. Quota numbers and account labels are not recorded here. Claude values require a claude.ai Pro/Max login; Team/Enterprise and other OSes are unverified.
+
+## CANDIDATES-001 (2026-11-02, macOS / Python 3.9.6)
+
+- `python3 -m unittest discover -s tests -q`: 35 tests, OK. 기존 28개 및 후보 조회 무변경, 설정·CLI 검증, Claude 검증 누락/만료/실행파일 변경, 정상/20%/5%/미확인 한도, 사용자 명시 선택 보존, 공급자 effort 비순위 처리, 독립 리뷰 대안 전환 7개 추가.
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/orca-team`: Skill is valid. `git diff --check`: 성공.
+- `kit.py setup --agent claude --json` 후 Run `run_2bb726775414`, Dispatch `ctx_2d02035c83eb`: routing.json만 읽는 작업 성공. launch.effective = claude / sonnet / high. 별칭의 구체적 버전은 프로필에 고정하거나 추측하지 않는다. 모델 품질 평가를 의미하지 않는다.
+- `kit.py verify-profile --profile claude --dispatch ctx_2d02035c83eb`: verified. worker_done 메시지 처리·ack 및 worker-release 성공, reclaimable worker-list 빈 목록 확인.
+- `kit.py usage refresh --json`: Codex·AGY updated, Claude unknown. 미확인 사용량을 여유로 취급하지 않았다. 인증·권한·계정 전환 없음.
+- `kit.py update`: managed_files 24, removed_files 0. 세 에이전트 설치본의 모든 소스 파일 및 manifest 해시 일치 확인, 로컬 사용자 설정 보존.
+- 설치본 `route --task-type review --candidates --implementation-agent codex` 및 `route --task-type design --select-profile claude --selection-reason ...`: Claude ready 및 선택 이유/실행 인자 확인. 후보 조회는 작업자 실행을 유발하지 않는다.
+
+## CLAUDE-MODELS-001 (2026-11-02, macOS / Python 3.9.6)
+
+- 변경: Claude 프로필을 claude-sonnet/claude-opus/claude-fable(각 high)로 분리하고 simple 외 모든 작업 후보에 포함. claude-fable은 require_quota로 계정에 Fable 한도가 보고될 때만 자동 후보. `--select-profile ... --effort`와 `verify-profile --effort`, 후보의 verified_efforts 추가.
+- `python3 -m unittest discover -s tests`: 38 tests, OK. 모델별 후보·실행 인자, Fable 한도 미보고 시 자동 제외/명시 선택 허용/보고 시 ready, 조합 미검증 effort blocked·검증 후 ready, 잘못된 effort 거부 추가.
+- `quick_validate.py skills/orca-team`: Skill is valid. `git diff --check`: 성공.
+- `kit.py update`: managed_files 24, removed_files 0. 세 설치본과 저장소 skills/orca-team 일치 확인.
+- 설치본 `usage refresh --agent claude` 후 `route --task-type design --candidates`: claude-sonnet ready(verified_efforts high, 기존 sonnet/high 근거 재사용), claude-opus는 검증 근거 없음으로 blocked, claude-fable은 검증 근거 없음 + `required quota not reported for this account: claude-fable`로 blocked. 현재 계정의 Orca 응답은 fableWeekly=null.
+- 미실행: opus/fable 및 sonnet 외 effort 조합의 실제 읽기 전용 Dispatch 검증. 작업자 실행이 필요하므로 사용자 요청 시 진행한다.

@@ -191,7 +191,7 @@ def routing_config(config):
     if not isinstance(config.get('profiles', {}), dict) or not isinstance(config.get('routes', {}), dict):
         raise ValueError('profiles and routes must be objects')
     for name, p in profiles.items():
-        if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade','quota_groups'}:
+        if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade','quota_groups','require_quota'}:
             raise ValueError('invalid profile: '+name)
         if p.get('agent') not in ('codex','claude','agy') or not isinstance(p.get('model'),str) or not p['model'].strip():
             raise ValueError('profile requires agent and model: '+name)
@@ -201,6 +201,8 @@ def routing_config(config):
             raise ValueError('embedded effort conflicts with model: '+name)
         if 'quota_groups' in p and (not isinstance(p['quota_groups'],list) or any(not isinstance(g,str) or not g for g in p['quota_groups'])):
             raise ValueError('invalid quota_groups')
+        if 'require_quota' in p and (not isinstance(p['require_quota'],bool) or (p['require_quota'] and not p.get('quota_groups'))):
+            raise ValueError('require_quota needs quota_groups: '+name)
         for edge in ('fallback','upgrade'):
             if p.get(edge) and p[edge] not in profiles:
                 raise ValueError('unknown '+edge+' profile: '+name)
@@ -212,7 +214,93 @@ def routing_config(config):
             if current in seen:
                 raise ValueError('fallback cycle: '+start)
             seen.add(current);current=profiles[current].get('fallback')
+    candidate_config(config, profiles, routes)
     return profiles,routes
+
+
+def candidate_config(config, profiles, routes):
+    supplied=config.get('candidates',{})
+    if not isinstance(supplied,dict):raise ValueError('candidates must be an object')
+    candidates=dict(routing_defaults().get('candidates',{}))
+    candidates.update(supplied)
+    for task,names in candidates.items():
+        if task not in routes or not isinstance(names,list) or not names or any(not isinstance(n,str) or n not in profiles for n in names):
+            raise ValueError('invalid candidate profiles: '+str(task))
+    return candidates
+
+
+def candidate_names(config, task_type, complexity='normal'):
+    profiles,routes=routing_config(config)
+    if task_type not in routes:raise ValueError('unknown task type')
+    baseline='deep' if complexity=='complex' and task_type!='review' else routes[task_type]
+    names=candidate_config(config,profiles,routes).get(task_type,[])
+    return list(dict.fromkeys([baseline]+names))
+
+
+def route_candidates(config, state, task_type, complexity='normal', implementation_agent=None):
+    profiles,_=routing_config(config)
+    rows=[]
+    for name in candidate_names(config,task_type,complexity):
+        p=profiles[name]
+        checked=route_base(config,state,task_type,complexity,profile=name,implementation_agent=implementation_agent)
+        quota=usage.status(state,p,config)
+        reasons=[r['reason'] for r in checked.get('rejected',[])]
+        if p['effort'] not in ('low','medium','high'):reasons.append('automatic effort exceeds high')
+        if quota['state']=='protected':reasons.append('quota reserve protected')
+        gate=quota_gate(config,state,p)
+        if gate:reasons.append(gate)
+        rows.append({'profile':name,**p,'verified_efforts':verified_efforts(config,state,p),'status':'blocked' if reasons else checked['status'],
+                     'verification_status':checked['status'],'usage':quota,'excluded_reasons':reasons,
+                     'review_independence': None if task_type!='review' or implementation_agent is None else p['agent']!=implementation_agent})
+    return {'task_type':task_type,'complexity':complexity,'baseline_profile':rows[0]['profile'],'candidates':rows}
+
+
+def select_candidate(config, state, task_type, name, reason, complexity='normal', implementation_agent=None, effort=None):
+    if not isinstance(reason,str) or not reason.strip():raise ValueError('--selection-reason required')
+    names=candidate_names(config,task_type,complexity)
+    if name not in names:raise ValueError('profile is not approved for task type')
+    profiles,_=routing_config(config)
+    if effort is not None and (effort not in ('low','medium','high') or profiles[name]['effort_mode']!='flag'):
+        raise ValueError('coordinator effort must be low|medium|high on a flag-effort profile')
+    def resolve(n):
+        # Only the chosen profile takes the coordinator effort; alternatives keep their own verified effort.
+        chosen=effort if n==name else None
+        result=route_base(config,state,task_type,complexity,profile=n,effort=chosen,implementation_agent=implementation_agent)
+        if (chosen or profiles[n]['effort']) not in ('low','medium','high'):
+            return {**result,'status':'blocked','launch_args':[],'reason':'automatic effort exceeds high'}
+        gate=quota_gate(config,state,profiles[n]) if result.get('status')=='ready' else None
+        if gate:return {**result,'status':'blocked','launch_args':[],'reason':gate}
+        return {**result,'explicit':False}
+    base=resolve(name)
+    # These candidates are task-approved; cross-provider effort is not a quality ranking.
+    alternatives=[n for n in names if n!=name]
+    if task_type=='review' and implementation_agent:
+        alternatives.sort(key=lambda n:profiles[n]['agent']==implementation_agent)
+    policy={**config,'usage':{**config.get('usage',{}),'alternatives':{task_type:alternatives}}}
+    result=usage.select(base,policy,state,task_type,resolve,compare_effort=False)
+    return {**result,'selected_profile':name,'selected_effort':effort,'selection_reason':reason.strip()}
+
+
+def quota_gate(config, state, p):
+    # Some models (e.g. Fable) exist only on some plans; unreported quota means unavailable for automatic choice.
+    if not p.get('require_quota'):return None
+    q=usage.status(state,p,config)
+    if q['state']=='disabled':return None
+    covered={w['group'] for w in q.get('windows',[])}
+    missing=[g for g in p['quota_groups'] if g not in covered]
+    return 'required quota not reported for this account: '+','.join(missing) if missing else None
+
+
+def verified_efforts(config, state, p):
+    efforts=['low','medium','high'] if p['effort_mode']=='flag' else [p['effort']]
+    evidence=read_json(state/'model-evidence.json',{});identity=tool_identity(p['agent'],config);now=datetime.now(timezone.utc)
+    found=[]
+    for e in efforts:
+        record=evidence.get(profile_key({**p,'effort':e}),{})
+        try:fresh=0<=(now-datetime.fromisoformat(record['verified_at'])).total_seconds()<=7*86400
+        except (KeyError,ValueError,TypeError):fresh=False
+        if fresh and identity and record.get('identity')==identity and record.get('dispatch_id'):found.append(e)
+    return found
 
 
 def profile_key(p):
@@ -268,7 +356,7 @@ def route_base(config, state, task_type, complexity='normal', profile=None, mode
         return {'status':'ready','profile':selected,**p,'launch_args':argv,
                 'reason':task_type+'/'+complexity,'rejected':rejected,'explicit':explicit,
                 'upgrades':1 if prior else 0,'actual_model':'unverified until launch receipt/provider response',
-                'review_independence': None if task_type!='review' else p['agent']!=implementation_agent}
+                'review_independence': None if task_type!='review' or implementation_agent is None else p['agent']!=implementation_agent}
     return {'status':'blocked','reason':'no verified compatible profile','rejected':rejected}
 
 
@@ -276,8 +364,12 @@ def route_base(config, state, task_type, complexity='normal', profile=None, mode
 def route(config, state, task_type, complexity='normal', profile=None, model=None,
           effort=None, agent=None, prior=None, failure=None, settled=False, implementation_agent=None):
     base=route_base(config,state,task_type,complexity,profile,model,effort,agent,prior,failure,settled,implementation_agent)
-    return usage.select(base,config,state,task_type,
-                        lambda name:route_base(config,state,task_type,complexity,profile=name,implementation_agent=implementation_agent))
+    profiles,_=routing_config(config)
+    def gated(result):
+        gate=quota_gate(config,state,profiles[result['profile']]) if result.get('status')=='ready' and not result.get('explicit') else None
+        return {**result,'status':'blocked','launch_args':[],'reason':gate} if gate else result
+    return usage.select(gated(base),config,state,task_type,
+                        lambda name:gated({**route_base(config,state,task_type,complexity,profile=name,implementation_agent=implementation_agent),'explicit':False}))
 
 
 def orca_read(config, *args):
@@ -331,12 +423,15 @@ def parse_time(value):
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
 
 
-def verify_profile(config,state,name,dispatch_id):
+def verify_profile(config,state,name,dispatch_id,effort=None):
     if os.environ.get('ORCA_ENVIRONMENT') or os.environ.get('ORCA_PAIRING_CODE'):
         raise ValueError('원격 Orca 환경의 검증 등록은 지원하지 않습니다.')
     profiles,_=routing_config(config)
     if name not in profiles:raise ValueError('알 수 없는 프로필입니다.')
-    p=profiles[name]
+    p=dict(profiles[name])
+    if effort is not None:
+        if p['effort_mode']!='flag':raise ValueError('ID 내장 effort 프로필에는 --effort를 사용할 수 없습니다.')
+        p['effort']=effort;routing_config({'profiles':{'override':p}})
     # Query the live runtime, never accept caller-provided completion JSON.
     payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id)
     try:
@@ -381,6 +476,9 @@ def main():
     parser.add_argument('--task-type', choices=['simple','implementation','test','design','debug','review'])
     parser.add_argument('--complexity', choices=['normal','complex'], default='normal')
     parser.add_argument('--profile')
+    parser.add_argument('--candidates',action='store_true',help='read-only task-approved candidate report')
+    parser.add_argument('--select-profile',help='coordinator choice from task-approved candidates')
+    parser.add_argument('--selection-reason',help='why the coordinator selected this candidate')
     parser.add_argument('--model')
     parser.add_argument('--effort')
     parser.add_argument('--agent', choices=['codex','claude','agy'])
@@ -400,7 +498,7 @@ def main():
     state=args.home/'.config/orca-orchestration-kit'
     try:
         config=read_json(state/'config.json',{})
-        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','usage'}:
+        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','candidates','usage'}:
             raise ValueError('unsupported configuration keys')
         if type(config.get('max_workers',2)) is not int or config.get('max_workers',2) not in (1,2):
             raise ValueError('max_workers must be 1 or 2')
@@ -440,13 +538,23 @@ def main():
             result=setup(args.home,config,state,args.agent)
         elif args.command=='verify-profile':
             if not args.profile or not args.dispatch:raise ValueError('--profile and --dispatch required')
-            result=verify_profile(config,state,args.profile,args.dispatch)
+            result=verify_profile(config,state,args.profile,args.dispatch,args.effort)
         elif args.command=='route':
             if not args.task_type:
                 raise ValueError('--task-type required')
-            result=route(config,state,args.task_type,args.complexity,args.profile,args.model,args.effort,
-                         args.agent,read_json(args.prior,{}) if args.prior else None,args.failure,
-                         args.settled,args.implementation_agent)
+            if args.candidates or args.select_profile:
+                if (args.candidates and args.select_profile) or any((args.profile,args.model,args.agent,args.prior,args.failure,args.settled)) or (args.candidates and args.effort):
+                    raise ValueError('candidate modes cannot combine with explicit overrides or upgrades')
+                if args.candidates:
+                    if args.selection_reason:raise ValueError('--selection-reason requires --select-profile')
+                    result=route_candidates(config,state,args.task_type,args.complexity,args.implementation_agent)
+                else:
+                    result=select_candidate(config,state,args.task_type,args.select_profile,args.selection_reason,args.complexity,args.implementation_agent,args.effort)
+            else:
+                if args.selection_reason:raise ValueError('--selection-reason requires --select-profile')
+                result=route(config,state,args.task_type,args.complexity,args.profile,args.model,args.effort,
+                             args.agent,read_json(args.prior,{}) if args.prior else None,args.failure,
+                             args.settled,args.implementation_agent)
         elif args.command=='doctor':
             result=doctor(args.home,config,state)
         elif args.command=='claude-setup':

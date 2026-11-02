@@ -165,7 +165,7 @@ def refresh(state,config,agent='codex',orca_reader=None):
         return {'status':'unknown','agent':agent,'reason':'refresh failed; previous account observations not used'}
 
 
-def select(base,config,state,task_type,resolve):
+def select(base,config,state,task_type,resolve,compare_effort=True):
     if base.get('status')!='ready':return base
     p=policy(config);q=status(state,base,config)
     base={**base,'usage':q,'baseline_profile':base['profile']}
@@ -174,7 +174,7 @@ def select(base,config,state,task_type,resolve):
         for name in p['alternatives'].get(task_type,[]):
             alternative=resolve(name)
             if alternative.get('status')!='ready' or alternative['effort'] not in ('low','medium','high'):continue
-            if task_type!='simple' and {'low':0,'medium':1,'high':2}.get(alternative['effort'],-1)<{'low':0,'medium':1,'high':2}.get(base['effort'],99):continue
+            if compare_effort and task_type!='simple' and {'low':0,'medium':1,'high':2}.get(alternative['effort'],-1)<{'low':0,'medium':1,'high':2}.get(base['effort'],99):continue
             other=status(state,alternative,config)
             old={(w['agent'],w['account'],w['group']) for w in q['windows']}
             new={(w['agent'],w['account'],w['group']) for w in other['windows']}

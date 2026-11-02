@@ -65,3 +65,21 @@ Quota validation: 25 automated tests and skill validation passed. Codex account/
 ## Claude/AGY quota via Orca (2026-10-30)
 
 Claude and AGY quota are now refreshed from Orca's official `account list --json` rateLimits (one call for both), using Orca's updatedAt as the observation time so the five-minute expiry reflects real freshness. `usage refresh` without --agent refreshes Codex, Claude and AGY independently. Default AGY profiles declare quota_groups (light: Gemini Models; review: Gemini Models + Gemini 4 Argon). Not used: Claude statusLine (owned by Orca), `agy -p /usage` (no account identity), undocumented local caches.
+
+## CANDIDATES-001 (2026-11-02)
+in_progress: 작업별 승인 후보 조회·선택, Claude 프로필과 구독 보호 정책 구현. 기존 실행 작업은 유지. 다음: 자동 검사, Claude 읽기 전용 검증, 설치 스킬 갱신.
+
+2026-11-02 checkpoint: 후보 조회·선택과 Claude 프로필 구현, 격리 사본 unittest 34개 통과. 실제 Claude 검증과 설치본 갱신 진행 중.
+
+2026-11-02 checkpoint: 후보 조회·선택과 Claude 프로필 구현, 격리 사본 unittest 34개 통과. 실제 Claude 검증과 설치본 갱신 진행 중.
+
+## CANDIDATES-001 완료 (2026-11-02)
+
+현재: done. 작업별 승인 후보 조회와 조정자 선택을 공통 키트 및 세 에이전트 설치본에 반영했다. 고정 역할·균등 배분 없이 작업 적합성, 독립 리뷰와 확인된 구독 잔여량을 고려한다.
+검증: unittest 35개, 스킬 검증, diff 검사, Claude 읽기 전용 Dispatch 성공·검증 등록·보고 처리·회수, 설치 관리 파일 24개 및 세 설치본의 소스 일치 확인.
+다음: 이후 배정 직전 usage refresh → --candidates 조회 → --select-profile/--selection-reason 선택. Claude 사용량은 이번 공식 조회에서 unknown이므로 여유로 간주하지 않는다. 실행 중이던 다른 Run은 변경하지 않았다. 실제 타 OS 실행과 모델 품질 비교는 이번 검증 범위에 포함하지 않는다.
+
+## CLAUDE-MODELS-001 완료 (2026-11-02)
+
+현재: done. Claude 후보가 sonnet 하나로 고정되던 문제를 수정해 sonnet·opus·fable 모델별 프로필을 후보로 두고, 계정별 Fable 가용성과 조정자 effort 선택을 지원한다.
+다음: 필요 시 `setup --agent claude` 후 claude-opus(및 Fable 제공 계정에서 claude-fable) 읽기 전용 검증 Dispatch와 `verify-profile` 등록. 다른 effort도 쓰려면 같은 방식으로 `--effort`를 붙여 검증한다.

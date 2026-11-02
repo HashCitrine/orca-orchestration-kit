@@ -42,7 +42,7 @@ class OnboardingTests(unittest.TestCase):
         with patch.object(kit,'probe',return_value={'available':False}),patch.object(kit,'orca_read',side_effect=ValueError('offline')),patch.object(kit.shutil,'which',return_value=None):
             result=kit.setup(self.root,{},self.state,'claude')
         self.assertFalse(result['checks']['orca_connected']);self.assertFalse(result['checks']['skill_installed'])
-        self.assertEqual(result['profiles'],{});self.assertTrue(result['next_steps'])
+        self.assertEqual(result['profiles'],{'claude-sonnet':'blocked','claude-opus':'blocked','claude-fable':'blocked'});self.assertTrue(result['next_steps'])
         self.assertTrue((self.state/'setup-observation.json').exists())
     def test_setup_three_agents(self):
         for agent in ['codex','claude','agy']:

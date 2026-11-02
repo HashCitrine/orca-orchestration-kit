@@ -34,6 +34,35 @@
         "Gemini Models",
         "Gemini 4 Argon"
       ]
+    },
+    "claude-sonnet": {
+      "agent": "claude",
+      "model": "sonnet",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "claude"
+      ]
+    },
+    "claude-opus": {
+      "agent": "claude",
+      "model": "opus",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "claude"
+      ]
+    },
+    "claude-fable": {
+      "agent": "claude",
+      "model": "fable",
+      "effort": "high",
+      "effort_mode": "flag",
+      "quota_groups": [
+        "claude",
+        "claude-fable"
+      ],
+      "require_quota": true
     }
   },
   "routes": {
@@ -43,5 +72,49 @@
     "design": "deep",
     "debug": "deep",
     "review": "review"
+  },
+  "candidates": {
+    "simple": [
+      "light",
+      "standard"
+    ],
+    "implementation": [
+      "standard",
+      "deep",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+      "review"
+    ],
+    "test": [
+      "standard",
+      "deep",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+      "review"
+    ],
+    "design": [
+      "deep",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+      "review"
+    ],
+    "debug": [
+      "deep",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+      "review"
+    ],
+    "review": [
+      "review",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+      "deep",
+      "standard"
+    ]
   }
 }
