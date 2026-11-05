@@ -65,26 +65,32 @@ class Tests(unittest.TestCase):
 
     def test_context_reference_packaging_lifecycle(self):
         source = Path(kit.__file__).resolve().parent/'skills'/kit.NAME
-        relative = Path('references/context-management.md')
-        original = (source/relative).read_bytes()
+        references = [Path('references/context-management.md'), Path('references/entire.md')]
+        originals = {relative: (source/relative).read_bytes() for relative in references}
         with tempfile.TemporaryDirectory(prefix='orca context 한글 ') as directory:
             root = Path(directory).resolve()
             destinations = {agent: root/agent/'skills' for agent in ('codex','claude','agy','grok')}
             state = root/'state'
             kit.install(source, destinations, state)
-            targets = [path/kit.NAME/relative for path in destinations.values()]
-            for target in targets:
+            targets = {path/kit.NAME/relative: original
+                       for path in destinations.values() for relative, original in originals.items()}
+            for target, original in targets.items():
                 self.assertEqual(target.read_bytes(), original)
             kit.install(source, destinations, state)
-            targets[0].write_bytes(original+b'\nuser edit\n')
-            with self.assertRaises(ValueError):
-                kit.install(source, destinations, state)
-            with self.assertRaises(ValueError):
-                kit.install(source, destinations, state, True)
-            self.assertEqual(targets[0].read_bytes(), original+b'\nuser edit\n')
-            for target in targets[1:]:
-                self.assertEqual(target.read_bytes(), original)
-            targets[0].write_bytes(original)
+            for relative in references:
+                edited = destinations['codex']/kit.NAME/relative
+                original = originals[relative]
+                with self.subTest(reference=str(relative)):
+                    edited.write_bytes(original+b'\nuser edit\n')
+                    with self.assertRaises(ValueError):
+                        kit.install(source, destinations, state)
+                    with self.assertRaises(ValueError):
+                        kit.install(source, destinations, state, True)
+                    self.assertEqual(edited.read_bytes(), original+b'\nuser edit\n')
+                    for target, expected in targets.items():
+                        if target != edited:
+                            self.assertEqual(target.read_bytes(), expected)
+                    edited.write_bytes(original)
             runtime = root/'workspace/.local/orca-team/runs/run-test/checkpoint.md'
             runtime.parent.mkdir(parents=True)
             runtime.write_text('local runtime state', encoding='utf-8')

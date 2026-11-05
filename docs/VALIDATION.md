@@ -1,5 +1,16 @@
 # 검증 결과
 
+## Entire 선택형 연동 (2026-11-05, Windows)
+
+- 스킬 지침·운영 체크포인트의 선택형 Entire 참조·작업자 보고·근거 보존 규칙을 추가했다. `kit.py`, 라우팅·설정 API는 변경하지 않았다. 네 에이전트의 설치·반복 갱신·사용자 수정 충돌 보존·제거 검증을 새 가이드에도 적용했다. 로컬 unittest 57개 및 Python 3.11 UTF-8 스킬 형식 검사, 로컬 문서 링크 37개 검사 통과. `kit.py update`로 관리 파일 52개를 갱신하고 네 설치본의 변경 지침이 원본과 일치함을 확인했다. 원본 저장소에 Entire는 활성화하지 않았다.
+- 공식 Entire v0.12.2 windows/amd64 배포 ZIP의 SHA256 `d213ef9dd3329526a01be8ff44d5d2d07fc26dab2755e90618bf8ded692fade6`을 배포 checksums.txt와 대조했다. 바이너리의 enable/status/session/checkpoint 및 하위 조회 도움말을 확인했다. Codex CLI 0.166.0, Orca 1.4.248. 사용자 전역 PATH나 Codex 설정을 변경하지 않았다.
+- `.local/orca-team/experiments/entire/20261105-single-cli-02/`의 독립 Git 저장소에서 `enable --local --agent codex --skip-push-sessions --telemetry=false --yes --absolute-git-hook-path`를 실행했다. 유효 설정은 push_sessions=false, telemetry=false, git-refs. 프로젝트 `.codex/hooks.json`, `.entire/.gitignore`·로컬 설정과 격리 저장소의 Git 훅이 생성됐다. 기존 prepare-commit-msg 훅의 백업 해시와 커밋 시 후속 실행을 확인했다. Git author/committer는 HashCitrine 계정을 명시했다.
+- 별도 로컬 bare 저장소로 main 브랜치 코드 푸시 성공. 대상 refs는 refs/heads/main 하나였다. 그러나 실제 에이전트 체크포인트가 생성되지 않았으므로 이 결과는 코드 푸시만 검증하며 **세션 기록 전송 억제의 실증은 아니다**. 외부 원격에 실험 기록을 푸시하지 않았다. Entire 로그인·클라우드 기능·기존 세션 가져오기는 수행하지 않았다.
+- 원본 Git config·훅, 관련 사용자 전역 Git/Codex/Claude/Gemini 설정과 원본의 Entire/Codex 훅 경로를 전후 비교했고 읽기 불가 항목 없이 동일했다. Entire의 사용자 캐시 접근은 승격 승인 후 수행했다. 첫 샌드박스 시도는 캐시 잠금 접근 경고가 있었으며, 이후 독립 실험을 승격 실행했다. 첫 시도의 기존 pre-commit 훅은 Entire가 설치하는 훅이 아니므로 이동을 기대한 실험 단언을 수정하고, prepare-commit-msg로 실제 연결을 검증했다. 두 저장소와 로컬 바이너리는 삭제하지 않고 보존했다.
+- **실제 수집 실증 차단:** 현재 Windows의 `route --task-type implementation --profile standard`는 no verified compatible profile / missing, stale, or changed-runtime smoke-test evidence로 blocked, usage refresh는 unknown이었다. Entire status의 Codex 훅은 trust_review_needed와 7개 누락 승인을 보고한다. 설치된 Codex 훅은 PATH에서 entire를 찾으므로 실제 에이전트 환경의 명령 해석도 추가 확인이 필요하다. 제한을 우회하거나 승인을 자동 수락하지 않았으며 Orca 작업자 실행·실제 프롬프트 수집·세션 종료 후 재조회는 수행하지 않았다.
+- 아스트라 독립 세션에서 미설치, trailer만 존재/조회 실패, 과거 승인, 삭제 전 근거 누락, 대화 수집과 gitignore, 훅 신뢰/PATH, 여러 세션·오래된 revision, 체크포인트 없는 푸시의 8개 시나리오를 읽기 전용 검토했다. 문서 반영을 막는 결함은 없었으며, 실제 기록 없는 푸시를 전송 억제 성공으로 판단하지 않는 문구와 수집 실패 시 세션 회수·저장소 제거를 분리하는 문구를 보강했다. 모의 검토를 실동작 검증으로 간주하지 않는다.
+- 로컬 근거: 위 실험 디렉토리의 `evidence/summary.json`, 설정·도움말·훅·커밋·푸시·refs 관찰 결과. 원본과 별도 Git common directory임을 확인했다. 세션 기록과 실험 파일은 커밋 대상에서 제외한다. 1차 잔여, CLI 진단·비공개 원격·병렬·다른 에이전트/OS 검증은 [후속 계획](PLAN.md#entire-선택형-연동과-후속-todo)에 남겼다.
+
 ## 조정자 컨텍스트 체크포인트 (2026-11-05, Windows)
 
 - Run별 로컬 체크포인트·복원 지침과 템플릿을 추가하고 작업자 보고·정리 지침에 연결했다. 실행 전 pending과 실행 후 실제 근거, 실행·검증·통합·정리 상태 분리, 승인·상향 이력 유실 처리, 새 세션의 읽기 전용 확인 범위를 명시했다. 새 CLI나 자동 세션 교체는 추가하지 않았다.

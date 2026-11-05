@@ -55,6 +55,7 @@ description: Coordinate Claude, Codex, agy and Grok through Orca when the user r
 - Run 생성 후 첫 배정 전에 [체크포인트와 복원](references/context-management.md)을 읽고 조정자 작업 공간에 체크포인트를 만든다. 주요 결정·메시지 처리 후, 배정·통합·정리 전후와 대기·턴 종료 전에 변경 사항을 저장한다. 작업자는 조정자 기록을 수정하지 않는다.
 - 압축 요약과 재개 안내에 체크포인트의 절대 경로·실행 호스트·Run ID를 남긴다. 압축·중단 후에는 체크포인트와 실제 Orca/Git 상태를 대조한 뒤 계속한다. 저장된 pending이나 route를 성공 증거 또는 재실행 권한으로 사용하지 않는다.
 - 새 세션은 소유권과 메시지 수신 연결을 확인하기 전까지 기존 Run을 읽기 전용으로 확인한다. 이 스킬은 자동 압축·세션 교체·Run 인계를 수행하지 않는다.
+- 사용자가 Entire 연동을 선택한 저장소에서는 [선택형 Entire 기록](references/entire.md)을 읽는다. Entire는 세션·커밋 근거이며 Orca/Git의 현재 상태와 운영 체크포인트를 대체하지 않는다. 스킬 설치·업데이트는 Entire 설치·활성화·훅 변경을 하지 않는다. 미설치·비활성이면 기존 절차로 진행한다.
 
 ## 보조 판단
 필요할 때 [선택형 보조 판단](references/decision.md)을 읽는다. `scripts/decision.py status`로 기존 인증을 확인하고 현재 요청 > decision.provider 설정 > auto 순으로 선택한다. auto는 Jev 우선, OpenAI만 설정되어 있으면 GPT Decisions를 사용한다. 인증 존재는 API 접근 성공의 증거가 아니다. 둘 다 없거나 none이면 조정자가 판단한다.
