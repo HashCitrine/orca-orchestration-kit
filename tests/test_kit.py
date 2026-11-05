@@ -63,6 +63,36 @@ class Tests(unittest.TestCase):
             dest=root/'dest';(dest/kit.NAME).mkdir(parents=True);(dest/kit.NAME/'SKILL.md').write_text('same')
             with self.assertRaises(ValueError):kit.install(source,{'x':dest},root/'state')
 
+    def test_context_reference_packaging_lifecycle(self):
+        source = Path(kit.__file__).resolve().parent/'skills'/kit.NAME
+        relative = Path('references/context-management.md')
+        original = (source/relative).read_bytes()
+        with tempfile.TemporaryDirectory(prefix='orca context 한글 ') as directory:
+            root = Path(directory).resolve()
+            destinations = {agent: root/agent/'skills' for agent in ('codex','claude','agy','grok')}
+            state = root/'state'
+            kit.install(source, destinations, state)
+            targets = [path/kit.NAME/relative for path in destinations.values()]
+            for target in targets:
+                self.assertEqual(target.read_bytes(), original)
+            kit.install(source, destinations, state)
+            targets[0].write_bytes(original+b'\nuser edit\n')
+            with self.assertRaises(ValueError):
+                kit.install(source, destinations, state)
+            with self.assertRaises(ValueError):
+                kit.install(source, destinations, state, True)
+            self.assertEqual(targets[0].read_bytes(), original+b'\nuser edit\n')
+            for target in targets[1:]:
+                self.assertEqual(target.read_bytes(), original)
+            targets[0].write_bytes(original)
+            runtime = root/'workspace/.local/orca-team/runs/run-test/checkpoint.md'
+            runtime.parent.mkdir(parents=True)
+            runtime.write_text('local runtime state', encoding='utf-8')
+            kit.install(source, destinations, state, True)
+            for target in targets:
+                self.assertFalse(target.exists())
+            self.assertEqual(runtime.read_text(encoding='utf-8'), 'local runtime state')
+
     def test_cache_refresh_and_default_models(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory).resolve()

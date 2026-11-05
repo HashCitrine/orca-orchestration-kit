@@ -7,6 +7,7 @@
 - 시작 receipt에서 Dispatch, 실행 호스트, 세션과 새로 생성된 워크트리의 정확한 식별자를 기록한다. current나 기존 워크트리를 임시 생성 자원으로 취급하지 않는다.
 - 현재 CLI의 `skills get orchestration`과 `skills get orca-cli`를 따르고, 회수가 불확실하면 `skills get orchestration --reference references/recovery-and-cleanup.md`를 읽는다. 명령과 플래그는 해당 CLI의 도움말로 확인한다.
 - 완료 메시지와 실제 변경·검증 근거를 대조하고 필요한 결과를 조정자 작업 공간 또는 합의된 영구 위치에 통합·보존한다. 임시 워크트리 안의 파일 경로만 보고한 것은 보존 완료가 아니다. 미커밋 파일·추적되지 않는 산출물과 미통합 커밋도 확인한다.
+- [체크포인트](context-management.md)가 참조하는 보고·테스트 근거·route JSON도 영구 위치에 보존하고 참조 경로를 갱신한다. 정리 직전 대상과 의도를 pending으로 기록하고 직후 실제 receipt를 반영한다. pending이나 정리 예약은 제거·회수 완료가 아니다.
 - 성공·실패 여부와 별개로 settlement와 결과 보존을 확인한다. 실행 중, 무응답, 종료 미확인 상태를 완료로 간주해 정리하지 않는다. 기존에 남아 있는 다른 작업의 자원을 일괄 정리하지 않는다.
 
 ## 세션 회수
