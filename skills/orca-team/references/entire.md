@@ -23,6 +23,8 @@ entire status --detailed
 
 `--absolute-git-hook-path`는 Git 훅의 실행 경로 설정이다. Codex 프로젝트 훅이 `entire`를 PATH에서 찾는 명령으로 생성되면 실제 에이전트 실행 환경에서도 해당 명령을 찾을 수 있어야 한다. 사용자 전역 PATH를 자동 변경하지 않는다. `status`가 `trust_review_needed`나 누락 승인을 보고하면 훅 파일 설치를 실행 승인으로 간주하지 않는다. 사용자의 검토가 필요한 신뢰·훅 승인은 자동 수락하지 않고 실제 수집을 미완료로 기록한다.
 
+Windows 단일 CLI 실증에서는 기본 관리 명령을 바꾸면 Entire v0.12.2가 Codex를 설치된 에이전트로 인식하지 못했다. 기본 `command`는 보존하고 [Codex의 Windows 전용 `commandWindows`](https://learn.chatgpt.com/docs/hooks)에 로컬 Entire 실행 경로를 지정한 뒤 사용자 신뢰 검토와 실제 수집을 확인했다. 로컬 설정을 다른 컴퓨터에 그대로 복사하지 않는다. 일반 셸의 bare `entire`는 여전히 없을 수 있으므로 수동 조회에는 확인한 바이너리의 절대 경로를 사용한다.
+
 초기 기본값은 세션 자동 푸시 off(`push_sessions=false`)와 telemetry off이다. 유효 설정과 실제 전송 동작을 함께 확인한다. Entire 로그인·클라우드 검색·미러·Trail·brain·외부 요약 제공자는 이번 범위에서 사용하지 않는다. Codex 자체의 모델 통신과 Entire 기록 전송은 구분하며, 이 설정을 모든 외부 통신 차단으로 설명하지 않는다.
 
 프롬프트·도구 출력도 기록될 수 있다. `.local/`이나 `.gitignore`는 대화 기록을 수집 대상에서 제외하는 규칙이 아니다. [공식 보안 설명](https://github.com/entireio/cli/blob/v0.12.2/docs/security-and-privacy.md)을 참고한다. 로컬 기록을 외부로 전송하지 않고, `--mirror`나 Entire refs/기록 브랜치를 포함하는 포괄적인 push를 하지 않는다. 비공개 원격 동기화는 후속 작업이다.
@@ -40,6 +42,8 @@ entire status --detailed
 1. 원본과 Git common directory를 공유하지 않는 독립 로컬 저장소를 만든다. 실험은 `.local/orca-team/experiments/entire/<실험-ID>/`에 보존한다. 기존 저장소를 실험용 worktree로 대신하지 않는다. 바이너리도 안정된 로컬 경로에 보존해 훅의 절대 경로가 끊어지지 않게 한다.
 2. 준비한 저장소에서만 Entire 설정·Codex 훅을 적용한다. 원본 저장소의 설정·훅과 관련 전역 설정을 전후 비교한다. 최초에는 외부 원격을 연결하지 않는다.
 3. Orca에 격리 저장소를 등록하고 기존 팀 스킬의 모델 검증·usage refresh·route 절차를 적용한다. Codex CLI 한 명으로 제한한다. `agent launch --surface terminal`의 터미널 식별자를 `worker-start --terminal`과 정확한 작업 공간에 연결한다. 현재 Orca 가이드와 도움말을 따르며 worker-start에 없는 surface 플래그를 만들지 않는다. 작업은 worker-start로 한 번만 전달한다.
+
+   현재 Windows 실증에서는 일반 CLI adoption이 `agent_unconfigured`로 거부되어 Task가 생성되지 않았다. 실제 상태 확인 후 해당 CLI를 정상 종료하고, 사용자의 CLI 기본 실행 방식에서 `worker-start --agent codex`로 직접 감독형 시작을 수행했다. 이 경로의 actual mode와 launch.effective를 확인한 뒤 실제 bootstrap 근거를 등록했다. 시작 오류 시 현재 Orca 복구 가이드를 따르며 무작정 같은 입력을 반복하거나 미종료 CLI와 새 작업자를 중복 실행하지 않는다.
 4. 일반 Codex CLI 세션에 고유한 무해한 프롬프트 표식, 작은 파일 변경, 검증, 명시적 커밋을 배정한다. 읽기 전용 작업이나 ephemeral 실행으로 커밋 수집을 입증하지 않는다. 자동 생성된 훅·로컬 메타데이터는 변경 파일과 구분한다.
 5. 프롬프트 표식 → 변경 파일 → 커밋 → trailer → checkpoint → session의 실제 연결을 확인한다. 작업자 완료·회수 후 새 조회 프로세스에서도 같은 기록이 읽혀야 한다. 실패는 실제 관찰과 함께 미검증/미완료로 보고하고 다른 에이전트로 범위를 확대하지 않는다.
 6. 외부 서버 대신 별도 로컬 bare 저장소를 origin으로 연결해 일반 코드 브랜치만 push한다. 대상에 코드 커밋은 도달하고 Entire 기록 refs/기록 브랜치는 도달하지 않았는지 확인한다. 실제 agent checkpoint 생성·조회가 선행되지 않았다면 코드 push만 검증한 것이며 기록 전송 억제는 미검증으로 남긴다. 옵션 설정만 보고 미전송을 주장하지 않는다.

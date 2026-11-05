@@ -1,5 +1,15 @@
 # 검증 결과
 
+## 현재 프로젝트 Entire 실증 (2026-11-05, Windows)
+
+- `test/entire-live-validation`에서 실행. 키트의 로컬 executables에 설치된 native Codex 및 Orca 경로를 지정한 뒤 setup과 automatic usage refresh 성공. bootstrap Dispatch `ctx_b7d8a53dc33b`의 succeeded·launch.effective를 실제 조회하여 standard(gpt-6.1-sol/medium) 등록 후 route ready를 확인했다. 초기 `worker-show` 기본 JSON은 요약형이므로 기존 등록기가 필드를 읽지 못했다. 루트/설치용 스크립트에서 `--full`을 요청하도록 고치고, 요약형/전체형 응답을 구분하는 회귀 테스트를 추가했다. 전체 unittest 58개 통과.
+- 사용자 검토를 거친 프로젝트 Codex 훅 7개와 Entire v0.12.2의 로컬 설정을 사용했다. 기본 관리 훅 명령은 유지하고 공식 Windows 전용 commandWindows에 로컬 바이너리 실행을 지정했다. telemetry=false, checkpoint push disabled=true이며 전역 PATH는 변경하지 않았다. 기존 config·훅 백업은 `.local/orca-team/experiments/entire/live-project-20261105/before/`에 보존한다.
+- 첫 일반 CLI의 감독형 adoption은 agent_unconfigured로 거부됐고 Task가 생성되지 않았음을 확인했다. 파일·명령 실행 없는 연결 확인은 실제 Entire 세션으로 수집됐다. 해당 CLI의 /exit 후 셸 복귀를 확인하고 정확한 터미널을 정리한 다음 직접 worker-start --agent 경로로 bootstrap을 시작했다. 이후 Dispatch 주소 send로 후속 작업을 전달했으며 병렬 작업자는 실행하지 않았다.
+- 후속 `ctx_fc245ac5a175` 성공. 실제 커밋 `0c1d2a7fb430756630a5ba7bfc0ad1e340109cf4`는 `docs/entire-live-validation.md` 하나만 변경하고 HashCitrine author/committer를 사용한다. trailer와 checkpoint `01M6N3NQNYKXKDGTFBXQ7SPSAE`, session `01a1aa35-d873-71d2-9d04-454e6e8c2b3e`, branch·agent·model·files_touched를 대조했다. 저장된 transcript의 고유 표식과 대상 파일을 로컬에서 확인했고 전체 원문은 출력·staging하지 않았다.
+- 두 감독형 작업자의 released 상태를 확인했다. 후속 worker-show는 exited/released, 명시 release는 already_released를 반환했다. 그 이후 새 Entire 프로세스로 metadata/transcript를 다시 읽어 동일 연결을 확인했다. 이 조회는 실제 컨텍스트 압축이나 session resume 실행 검증이 아니다.
+- 실제 체크포인트가 존재하는 상태에서 별도 로컬 bare 저장소로 origin 코드 푸시를 시험했다. 해당 Git 명령의 remote.origin.pushurl만 로컬 경로로 재정의했고 저장된 Git config 해시는 유지됐다. 코드 커밋은 도달했지만 대상 refs는 실증 브랜치 하나뿐으로 checkpoint refs/기록 브랜치는 없었다. 로컬 체크포인트는 이후에도 조회됐다. 근거는 위 실험 디렉토리의 `push-summary.json` 및 `after-release-*.json`에 보존한다.
+- 성공한 프로젝트 로컬 활성화와 세션 전송 off는 유지하며 main에는 자동 병합하지 않는다. GitHub 코드 브랜치 푸시·해당 HEAD CI와 신규 checkpoint refs 원격 부재는 전달 단계에서 별도로 확인한다. 세션 원문·머신별 훅·로컬 인증·실험 파일은 커밋하지 않는다. 상세 범위는 [실증 결과](entire-live-validation.md)를 따른다.
+
 ## Entire 선택형 연동 (2026-11-05, Windows)
 
 - 스킬 지침·운영 체크포인트의 선택형 Entire 참조·작업자 보고·근거 보존 규칙을 추가했다. `kit.py`, 라우팅·설정 API는 변경하지 않았다. 네 에이전트의 설치·반복 갱신·사용자 수정 충돌 보존·제거 검증을 새 가이드에도 적용했다. 로컬 unittest 57개 및 Python 3.11 UTF-8 스킬 형식 검사, 로컬 문서 링크 37개 검사 통과. `kit.py update`로 관리 파일 52개를 갱신하고 네 설치본의 변경 지침이 원본과 일치함을 확인했다. 원본 저장소에 Entire는 활성화하지 않았다.

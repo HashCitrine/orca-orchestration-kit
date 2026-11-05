@@ -434,7 +434,7 @@ def verify_profile(config,state,name,dispatch_id,effort=None):
         if p['effort_mode']!='flag':raise ValueError('ID 내장 effort 프로필에는 --effort를 사용할 수 없습니다.')
         p['effort']=effort;routing_config({'profiles':{'override':p}})
     # Query the live runtime, never accept caller-provided completion JSON.
-    payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id)
+    payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id,'--full')
     try:
         result=payload['result'];dispatch=result['dispatch'];worker=result['worker']
         if dispatch['id']!=dispatch_id or worker['dispatchId']!=dispatch_id:

@@ -1,5 +1,9 @@
 # 진행 현황
 
+## 2026-11-05: 현재 프로젝트 Entire 실증
+
+실증 브랜치 `test/entire-live-validation`에서 실제 Codex CLI 대화·문서 변경·커밋·checkpoint 연결 확인 완료. native 실행 파일 지정으로 사용량 조회가 정상화됐고, bootstrap 성공 영수증의 `--full` 조회 호환성 수정 후 standard 등록과 route ready를 확인했다. 사용자 훅 신뢰 검토를 거쳐 실제 체크포인트를 생성했으며 작업자 회수 후 재조회와 로컬 origin 코드 푸시 시 기록 전송 억제까지 검증했다. 회귀 테스트 포함 로컬 58개 통과. [실증 결과](entire-live-validation.md)에 근거와 한계를 기록했으며 성공한 로컬 활성화·전송 off 설정은 유지한다. main에는 자동 병합하지 않는다.
+
 ## 2026-11-05: Entire 선택형 연동
 
 스킬·문서·템플릿 구현 및 로컬 훅/코드 푸시 검증 완료, 실제 단일 Codex CLI 수집 실증은 미완료. Entire v0.12.2의 로컬 설정과 기존 Git 훅 연결을 독립 저장소에서 확인했고 원본·관련 전역 설정 해시가 유지됐다. 로컬 테스트 57개 및 스킬 형식 검사 통과, 아스트라 독립 8개 시나리오 검토의 문구 보강을 반영했다. 현재 Windows의 Codex 프로필 검증 근거가 없어 route가 blocked이며 usage는 unknown, Codex 훅 신뢰는 trust_review_needed다. 작업자를 실행하지 않았으므로 수집·종료 후 재조회·실제 기록 전송 억제 성공을 주장하지 않는다. [후속 TODO](PLAN.md#entire-선택형-연동과-후속-todo)에 1차 잔여와 다음 회차 범위를 구분했다.

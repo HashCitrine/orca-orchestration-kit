@@ -121,7 +121,7 @@ python3 skills/orca-team/scripts/decision.py evaluate --provider openai --input 
 
 조정자는 Run별 로컬 체크포인트에 목표·제약·진행 상태·다음 행동을 기록합니다. 대화 압축이나 중단 후에는 Orca와 Git의 현재 상태를 대조하여 재개합니다. 실행·검증·통합·정리를 구분하고, 불확실한 작업을 중복 실행하지 않도록 하는 운영 지침입니다. 자동 압축이나 새 조정자 세션으로의 자동 인계는 제공하지 않습니다. [체크포인트와 복원](skills/orca-team/references/context-management.md)을 참고하세요.
 
-Entire CLI를 함께 쓰려면 저장소별로 선택하는 [Entire 연동 안내](skills/orca-team/references/entire.md)를 참고하세요. 운영 체크포인트에 세션·커밋 근거를 연결하며, 초기 기본값은 로컬 보관입니다. 스킬 설치만으로 Entire나 훅이 활성화되지는 않습니다. 현재 로컬 설정·Git 훅 연결·코드 푸시는 검증했지만 실제 Codex 세션 수집은 실행 검증 근거와 훅 신뢰 확인이 필요해 미검증입니다. CLI 진단과 비공개 원격 동기화는 [후속 계획](docs/PLAN.md#entire-선택형-연동과-후속-todo)에 남겼습니다.
+Entire CLI를 함께 쓰려면 저장소별로 선택하는 [Entire 연동 안내](skills/orca-team/references/entire.md)를 참고하세요. 운영 체크포인트에 세션·커밋 근거를 연결하며, 초기 기본값은 로컬 보관입니다. 스킬 설치만으로 Entire나 훅이 활성화되지는 않습니다. 현재 Windows의 단일 Orca Codex CLI에서 실제 세션·커밋 연결, 작업자 회수 후 재조회와 기록 전송 억제를 확인했습니다. [실증 결과](docs/entire-live-validation.md)와 [후속 계획](docs/PLAN.md#entire-선택형-연동과-후속-todo)을 참고하세요.
 
 ## 업데이트·다른 컴퓨터에서 사용하기
 

@@ -1,4 +1,5 @@
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,6 +24,17 @@ class OnboardingTests(unittest.TestCase):
         self.assertTrue(a['changed']);self.assertFalse(b['changed'])
         self.assertEqual(a['verified_at'],self.data['result']['dispatch']['completedAt'])
         self.assertTrue(kit.read_json(self.state/'model-evidence.json',{})['other']['preserve'])
+    def test_verification_fetches_full_worker_receipt(self):
+        def response(argv, **kwargs):
+            payload = self.data if '--full' in argv else {
+                'ok': True, 'result': {'dispatchId': 'd', 'state': 'succeeded', 'stage': 'settled'}}
+            return kit.subprocess.CompletedProcess(argv, 0, json.dumps(payload), '')
+        with patch.object(kit.subprocess, 'run', side_effect=response):
+            result = kit.verify_profile({}, self.state, 'standard', 'd')
+        self.assertEqual(result['status'], 'verified')
+        record = kit.read_json(self.state/'model-evidence.json', {})
+        self.assertEqual(next(iter(record.values()))['source'],
+                         'Orca worker-show: succeeded + launch.effective')
     def test_reject_non_success_remote_missing_mismatch_old(self):
         variants=[]
         for key,value in [('status','running'),('hostScope',{'kind':'remote'}),('completedAt','2000-01-01T00:00:00Z')]:
