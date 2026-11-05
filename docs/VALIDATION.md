@@ -1,5 +1,12 @@
 # 검증 결과
 
+## 워커 수 자동 조절과 기본 정리 (2026-11-05, Windows)
+
+- `py -3 -m unittest discover -s tests -v`: 45개 통과. max_workers 미지정/null/1/2/3/8 허용 및 0·음수·불리언·문자열·소수·배열·객체 거부 확인. 루트/설치용 스크립트 일치 검사 포함.
+- `py -3.11 -X utf8 .../skill-creator/scripts/quick_validate.py skills/orca-team`: Skill is valid. 기본 Python 3.12에는 PyYAML이 없어 설치된 Python 3.11로 형식 검사 수행.
+- `git diff --check`: 통과. 자동 인원 선택·사용자 지정·인원 축소 및 결과 통합 전 정리 금지·보존 요청·공유 공간·정리 실패 처리 지침 검토.
+- 설치된 Orca의 orchestration/cleanup 가이드와 worker-release/worktree rm 도움말을 조회해 자동 세션 회수와 별도 워크트리 제거 절차 확인. 실제 워커 생성·회수·워크트리 삭제 검증과 전역 스킬 설치 갱신은 수행하지 않음. 에이전트 지침 변경이며 별도 스케줄러나 정리 프로세스를 추가하지 않음.
+
 2026-10-30 / macOS / Orca 1.4.244
 
 ## 자동 테스트

@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,6 +10,28 @@ spec=importlib.util.spec_from_file_location('kit',Path(__file__).resolve().paren
 kit=importlib.util.module_from_spec(spec);spec.loader.exec_module(kit)
 
 class Tests(unittest.TestCase):
+    def test_max_workers_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home=Path(directory)
+            state=home/'.config/orca-orchestration-kit'
+            state.mkdir(parents=True)
+            # Candidate discovery validates config without starting workers or probing tools.
+            command=[sys.executable,str(Path(kit.__file__)), 'route', '--home',str(home),
+                     '--task-type','implementation','--candidates']
+            cases=[({},True),({'max_workers':None},True)]
+            cases += [({'max_workers':value},True) for value in (1,2,3,8)]
+            cases += [({'max_workers':value},False)
+                      for value in (0,-1,True,False,'3',2.5,[],{})]
+            for config,valid in cases:
+                with self.subTest(config=config):
+                    (state/'config.json').write_text(json.dumps(config),encoding='utf-8')
+                    result=subprocess.run(command,capture_output=True,text=True,encoding='utf-8')
+                    self.assertEqual(result.returncode,0 if valid else 1,result.stderr)
+                    if valid:
+                        self.assertIn('candidates',json.loads(result.stdout))
+                    else:
+                        self.assertIn('max_workers must be null (automatic) or a positive integer',result.stderr)
+
     def test_os_selection(self):
         for system,want in [('Darwin','orca'),('Windows','orca'),('Linux','orca-ide')]:
             self.assertEqual(kit.orca_command(system,{}),want)

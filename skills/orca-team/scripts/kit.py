@@ -501,8 +501,9 @@ def main():
         config=read_json(state/'config.json',{})
         if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','candidates','usage'}:
             raise ValueError('unsupported configuration keys')
-        if type(config.get('max_workers',2)) is not int or config.get('max_workers',2) not in (1,2):
-            raise ValueError('max_workers must be 1 or 2')
+        max_workers=config.get('max_workers')
+        if max_workers is not None and (type(max_workers) is not int or max_workers < 1):
+            raise ValueError('max_workers must be null (automatic) or a positive integer')
         for section in ('executables','skill_roots','models','efforts'):
             values=config.get(section,{})
             if not isinstance(values,dict) or any(not isinstance(v,str) or not v.strip() for v in values.values()):
