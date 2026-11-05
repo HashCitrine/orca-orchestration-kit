@@ -4,6 +4,7 @@
   "models": {},
   "efforts": {},
   "max_workers": null,
+  "decision": {"provider": "auto"},
   "profiles": {},
   "routes": {},
   "usage": {

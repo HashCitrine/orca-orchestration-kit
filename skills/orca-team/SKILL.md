@@ -26,7 +26,7 @@ description: Coordinate Claude, Codex, agy and Grok through Orca when the user r
 - 새 작업자 배정 직전에 scripts/kit.py usage refresh를 실행한다. Codex는 App Server, Claude·AGY·Grok는 Orca `account list`의 공식 집계로 갱신된다. 매 작업자 배정 전에 갱신한다. route 결과의 usage와 usage_reason을 사용자에게 설명한다.
 - 잔여 20% 이하에서는 설정된 품질 적합 대안 중 다른 한도의 여유가 확인된 조합을 우선한다. 5% 이하에서는 새 배정을 보류한다. 미확인·오래된 정보는 여유 있다고 가정하지 않고 기존 정책을 유지한다.
 - usage.alternatives는 작업별 품질 적합 프로필의 명시 목록이다. 새 대안을 모델 이름이나 effort만으로 동등하다고 추측해 추가하지 않는다. API 조회는 계정 변경 또는 실패 시 이전 계정 관찰을 재사용하지 않는다.
-- 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 사용량 데이터는 Jev에 보내지 않는다.
+- 실행 중인 작업을 끊거나 조정자 모델을 바꾸지 않는다. 크레딧 구매·소비·계정 전환을 자동 수행하지 않는다. 계정·구독 사용량 데이터는 보조 판단 API에 보내지 않는다.
 - 작은 작업은 직접 처리한다. 분배가 필요하면 `route --task-type <type> --candidates`로 작업별 승인 후보를 조회한다. Claude·Codex·AGY·Grok 중 작업 내용, 변경 범위, 검증 기준, 독립 검토 필요성과 확인된 구독 잔여량을 보고 매번 선택한다. 네 도구의 동시 사용·균등 배분이나 고정 역할은 강제하지 않는다. 기본 route는 바꾸지 않는다.
 - Claude 후보는 모델별 프로필 claude-sonnet·claude-opus·claude-fable이다. 특정 모델 하나로 고정하지 않고 작업 성격과 각 한도 잔여량으로 고른다. effort는 `--select-profile ... --effort low|medium|high`로 작업에 맞게 고르되 `verified_efforts`에 있는 조합만 쓴다. fable은 현재 계정에 Fable 한도가 보고될 때만 자동 후보가 되므로 제외 사유를 사용자에게 설명한다. 미검증 조합은 setup·verify-profile(--effort 포함)로 먼저 검증한다.
 - AGY 후보는 모델별 프로필 gemini-flash·gemini-argon·agy-claude-sonnet·agy-claude-opus·agy-gpt-oss이다. Gemini뿐만 아니라 Claude 5.5 및 GPT-OSS 120B까지 작업 성격과 3대 쿼터 그룹(Gemini Models, Gemini 4 Argon, Claude and GPT models) 잔여량에 따라 선택한다. 신규 프로필은 flag 방식으로 `--effort low|medium|high`를 지원하며 검증된 조합만 사용한다. 기존 light·review는 호환성을 유지한다.
@@ -39,7 +39,7 @@ description: Coordinate Claude, Codex, agy and Grok through Orca when the user r
 - 모델 검증/상향/대체 규칙은 references/routing.md를 읽는다. AGY는 ID 내장 effort를 사용하면 별도 --effort를 전달하지 않는다.
 - 작업당 한 번만 quality 실패에 대해 high 이하로 상향한다. 먼저 기존 Dispatch의 확실한 settlement를 확인한다. 인증/네트워크/설치 실패는 모델 상향으로 해결하지 않는다.
 - 모델이 달라지면 새 작업자를 시작한다. 실제 모델은 launch.effective 또는 공급자 응답으로 확인하고 미확인이면 그대로 기록한다.
-- 같은 도구로 구현·검토를 수행하면 독립 도구 검토가 아님을 보고한다. Jev는 분류만 보조하며 지원 여부와 모델 우열을 결정하지 않는다.
+- 같은 도구로 구현·검토를 수행하면 독립 도구 검토가 아님을 보고한다. 보조 판단 모델은 작업 분류 등을 보조하며 지원 여부와 모델 우열을 결정하지 않는다.
 
 ## 작업 수명
 - Task마다 대상, 산출물, 제약, 수정 소유권, 검증 기준을 포함한다. references/task-template.md를 사용한다.
@@ -51,5 +51,7 @@ description: Coordinate Claude, Codex, agy and Grok through Orca when the user r
 - 조정자는 완료 메시지를 현재 가이드대로 처리하고 필요한 ack를 수행한다. 결과 통합·보존 후 세션 회수와 이번 작업에서 만든 전용 임시 워크트리 정리를 마친다. 정리 전에 [완료 후 정리](references/cleanup.md)를 읽는다. 사용자 보존 요청이나 구체적인 후속 작업을 위한 재사용은 예외로 기록하고, 재사용이 끝나면 정리한다.
 - 사용자에게 작업별 결과·근거·미해결 사항과 세션/워크트리 정리 결과를 보고한다. 정리 보류·실패는 대상과 이유를 명시하며, 완료 보고만으로 회수 성공을 주장하지 않는다.
 
-## Jev
-필요할 때 references/jev.md를 읽는다. 판단은 보조 근거이며 권한이나 완료 여부를 단독 결정하지 않는다.
+## 보조 판단
+필요할 때 [선택형 보조 판단](references/decision.md)을 읽는다. `scripts/decision.py status`로 기존 인증을 확인하고 현재 요청 > decision.provider 설정 > auto 순으로 선택한다. auto는 Jev 우선, OpenAI만 설정되어 있으면 GPT Decisions를 사용한다. 인증 존재는 API 접근 성공의 증거가 아니다. 둘 다 없거나 none이면 조정자가 판단한다.
+
+호출 전 목적·선택 이유·전송할 최소 발췌와 자동 모드에서의 GPT 대체 가능성을 한국어로 알린다. auto에서 Jev 실패 시 설정된 GPT에 같은 발췌로 한 번 대체 호출하며, 명시 제공자는 자동 전환하지 않는다. 이후 실패하면 재시도 없이 조정자가 판단한다. 확률·점수는 보조 근거이며 권한, 지원 모델, 워커 실행이나 완료를 단독 결정하지 않는다.

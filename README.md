@@ -40,7 +40,7 @@ flowchart TD
 | Python 3.9+ | 설치·진단·모델 선택 도구를 실행합니다. 추가 패키지는 필요 없습니다. | [Python 다운로드](https://www.python.org/downloads/) |
 | Orca 앱과 CLI | 작업 공간과 에이전트를 실행합니다. | [Orca 설치](https://www.onorca.dev/docs/install) |
 | 사용할 에이전트 CLI와 로그인 | 실제 작업을 수행합니다. | [Codex](https://learn.chatgpt.com/docs/codex/cli) · [Claude Code](https://code.claude.com/docs/en/quickstart) · [AGY](https://antigravity.google/docs/getting-started?tab=cli) · Grok CLI (`grok`) |
-| Jev 인증 — 선택 | 애매한 작업 분류를 보조합니다. 첫 시작에는 없어도 됩니다. | [Jev 안내](skills/orca-team/references/jev.md) |
+| 보조 판단 인증 — 선택 | 기존 Jev 또는 OpenAI API 인증으로 애매한 작업 분류를 보조합니다. 없어도 진행합니다. | [보조 판단 안내](skills/orca-team/references/decision.md) |
 
 네 에이전트를 모두 준비할 필요는 없습니다. **Codex·Claude·AGY·Grok 중 익숙한 도구 하나로 시작**하세요. 기본 네 프로필을 그대로 쓰려면 Codex와 AGY가 필요합니다. Claude나 Grok만 사용할 때는 해당 도구에서 지원하는 모델을 확인해 로컬 프로필을 추가합니다. Grok 기본 후보는 `grok-4.5`·`grok-4.6`·`grok-4.7`이며, 검증 전에는 자동 배정되지 않습니다.
 
@@ -99,6 +99,17 @@ python3 kit.py usage show
 | 선택 결과 미리 확인 | “이 작업에 사용할 프로필과 선택 이유부터 알려줘.” |
 
 작은 일은 직접 처리합니다. 팀 작업을 명시하지 않으면 자동으로 작업자를 시작하지 않고 필요할 때 추천합니다.
+
+## Jev와 GPT 중 선택할 수 있나요?
+
+네. 기본 `decision.provider`는 `auto`이며 기존 인증을 먼저 확인합니다. Jev가 설정되어 있으면 우선 사용하고, OpenAI만 설정되어 있으면 Decisions API(`gpt-6-luna`)를 사용합니다. 둘 다 없으면 조정자가 판단합니다. OpenAI는 `OPENAI_API_KEY`, Jev는 기존 인증을 사용하며 인증 존재가 실제 API 접근 성공을 보장하지는 않습니다.
+
+```sh
+python3 skills/orca-team/scripts/decision.py status
+python3 skills/orca-team/scripts/decision.py evaluate --provider openai --input request.json
+```
+
+설정 파일에 `"decision": {"provider": "auto"}`를 추가하거나 `jev`·`openai`·`none`을 지정할 수 있습니다. 현재 요청의 선택을 `--provider`로 전달하면 설정보다 우선합니다. auto에서 Jev 실패 시 설정된 GPT로 같은 발췌를 한 번 보내며, 명시 제공자는 자동 전환하지 않습니다. 실패하면 재시도 없이 조정자가 판단합니다. 호출 전 목적과 최소 발췌, 대체 전송 가능성을 알립니다. 입력 예시는 [보조 판단 안내](skills/orca-team/references/decision.md)를 참고하세요.
 
 ## 작업자 수와 완료 후 정리
 

@@ -15,7 +15,7 @@
 
 검증 근거는 로컬 model-evidence.json에 조합별로 보관한다. key는 agent|model|effort|effort_mode, 값은 verified_at(UTC ISO), identity(실행 파일 path/mtime_ns/size), dispatch_id, source, actual_model이다. 현재 컴퓨터에서 작은 작업의 accepted worker_done과 launch 영수증을 확인한 조정자만 등록한다. 7일 경과 또는 실행 파일 변경 시 재검증하며 다른 컴퓨터로 복사하지 않는다. 캐시·목록에 있다는 사실만으로 검증 근거를 만들지 않는다.
 
-Jev는 유형/난이도 분류만 보조한다. 실패하면 조정자가 동일 기준으로 분류한다. 고정 모델 성능 순위를 추측하지 않는다.
+선택형 보조 판단(Jev 또는 GPT Decisions)은 유형/난이도 분류 등을 보조한다. 기존 인증을 확인해 auto는 Jev 우선이며, Jev 실패 시 설정된 GPT로 한 번 대체한다. 명시 제공자는 자동 전환하지 않는다. 사용할 수 없으면 조정자가 동일 기준으로 분류한다. 고정 모델 성능 순위를 추측하지 않는다. [설정과 실행](decision.md)을 따른다.
 
 상향: 이전 route JSON을 --prior로 전달하고 --failure quality --settled를 함께 사용한다. 실제 Dispatch 종료 확인은 조정자의 책임이다. 상향은 한 번만, high 이하 승인 프로필로 제한한다. 인증·네트워크·설치 실패는 상향하지 않는다. --prior 파일을 바꾸어 상향 제한을 회피하지 않는다.
 

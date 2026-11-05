@@ -117,9 +117,11 @@ AGY·Claude는 `--profile`에 검증한 프로필 이름을 사용하세요. 일
 
 키트 저장소에서 `git pull --ff-only` 후 `python3 kit.py update`를 실행하고 새 대화를 여세요. 제거는 `python3 kit.py uninstall`입니다. 로그인과 로컬 검증 기록은 삭제하지 않습니다. 다른 컴퓨터에서는 각 도구의 설치·로그인·검증을 다시 수행하며 키나 검증 파일을 복사하지 않습니다.
 
-### Jev는 나중에 추가해도 됩니다
+### 보조 판단은 나중에 추가해도 됩니다
 
-처음에는 Jev 없이 진행하세요. 필요해지면 [Jev 설정 안내](../skills/orca-team/references/jev.md)에 따라 별도로 인증합니다. API 호출 전 전송할 발췌를 알려주며, 실패 시 일반 도구로 계속 진행합니다.
+처음에는 별도 판단 API 없이 진행해도 됩니다. 기존 Jev 또는 OpenAI API 인증이 있으면 [보조 판단 안내](../skills/orca-team/references/decision.md)의 `decision.py status`로 확인하세요. 기본 auto는 Jev 우선이며 OpenAI만 설정되어 있으면 GPT Decisions를 사용합니다. 모두 없으면 조정자가 판단합니다. Jev 설정은 [기존 안내](../skills/orca-team/references/jev.md)를 따르고 OpenAI는 OPENAI_API_KEY 환경변수를 사용합니다. Codex 로그인만으로 이 API 인증이 되지는 않습니다. 키를 채팅이나 설정 파일에 넣지 마세요.
+
+config.json의 `decision.provider`를 auto·jev·openai·none 중 선택하거나 현재 요청의 제공자를 `--provider`로 지정합니다. 호출 전 전송 발췌와 auto의 대체 전송 가능성을 알립니다. auto에서 Jev 실패 시 설정된 GPT에 한 번 대체 요청하며, 명시 제공자는 전환하지 않습니다. 이후 실패하면 일반 도구와 조정자 판단으로 계속 진행합니다.
 
 ## 선택 사항: 사용량에 맞춰 배정하기
 

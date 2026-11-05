@@ -499,8 +499,12 @@ def main():
     state=args.home/'.config/orca-orchestration-kit'
     try:
         config=read_json(state/'config.json',{})
-        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','candidates','usage'}:
+        if not isinstance(config,dict) or set(config)-{'executables','skill_roots','models','efforts','max_workers','profiles','routes','candidates','usage','decision'}:
             raise ValueError('unsupported configuration keys')
+        decision=config.get('decision',{})
+        if (not isinstance(decision,dict) or set(decision)-{'provider'}
+                or decision.get('provider','auto') not in ('auto','jev','openai','none')):
+            raise ValueError('decision.provider must be auto, jev, openai, or none')
         max_workers=config.get('max_workers')
         if max_workers is not None and (type(max_workers) is not int or max_workers < 1):
             raise ValueError('max_workers must be null (automatic) or a positive integer')
