@@ -223,7 +223,8 @@ class DecisionTests(unittest.TestCase):
     def test_installed_client_includes_jev_and_config(self):
         from test_kit import kit
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            # macOS /var is a symlink; install intentionally rejects symlink ancestors.
+            root = Path(directory).resolve()
             home = root/'home'
             state = home/'.config/orca-orchestration-kit'
             state.mkdir(parents=True)
