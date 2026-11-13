@@ -45,6 +45,8 @@ class DecisionTests(unittest.TestCase):
                     patch.object(decision.urllib.request, 'build_opener') as network:
                 result = decision.status()
                 self.assertEqual(result['selected_provider'], expected)
+                openai_first = 'openai' if openai_available else ('jev' if jev_available else 'none')
+                self.assertEqual(decision.status('auto-openai')['selected_provider'], openai_first)
                 self.assertNotIn('secret-key', json.dumps(result))
                 self.assertEqual(decision.status('none')['selected_provider'], 'none')
                 self.assertEqual(decision.status('openai')['selected_provider'], 'openai')
@@ -151,12 +153,49 @@ class DecisionTests(unittest.TestCase):
             self.assertEqual(result['status'], 'coordinator_required')
             jev_call.assert_not_called()
 
+    def test_openai_first_falls_back_once_without_forwarding_model(self):
+        raw = {'model': 'jev-latest', 'answers': {'ready': {'value': 0.7}}, 'usage': {}}
+        payload = dict(self.payload, model='gpt-6-luna')
+        before = copy.deepcopy(payload)
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'key'}), \
+                patch.object(decision.jev, 'credential', return_value=('key', 'environment')), \
+                patch.object(decision.jev, 'evaluate', return_value=raw) as jev_call, \
+                patch.object(decision, 'openai_evaluate', return_value={'provider': 'openai'}) as gpt_call:
+            self.assertEqual(decision.evaluate(payload, 'auto-openai')['provider'], 'openai')
+            jev_call.assert_not_called()
+            gpt_call.reset_mock()
+            gpt_call.side_effect = decision.DecisionError('timeout: private-key')
+            announcements = []
+            result = decision.evaluate(payload, 'auto-openai', lambda *args: announcements.append(args))
+            self.assertEqual(result['provider'], 'jev')
+            self.assertEqual(result['status'], 'succeeded')
+            self.assertEqual(announcements, [('openai', False), ('jev', True)])
+            self.assertNotIn('model', jev_call.call_args.args[0])
+            self.assertEqual(payload, before)
+            self.assertEqual(gpt_call.call_count, 1)
+            self.assertEqual(jev_call.call_count, 1)
+            jev_call.reset_mock()
+            gpt_call.reset_mock()
+            jev_call.side_effect = decision.jev.JevError('authentication_failed: private-key')
+            result = decision.evaluate(payload, 'auto-openai')
+            self.assertEqual(result['status'], 'coordinator_required')
+            self.assertEqual([a['provider'] for a in result['attempts']], ['openai', 'jev'])
+            self.assertEqual(gpt_call.call_count, 1)
+            self.assertEqual(jev_call.call_count, 1)
+            self.assertNotIn('private-key', json.dumps(result))
+        with patch.dict(os.environ, {'OPENAI_API_KEY': ''}), \
+                patch.object(decision.jev, 'credential', return_value=('key', 'environment')), \
+                patch.object(decision.jev, 'evaluate', return_value=raw), \
+                patch.object(decision, 'openai_evaluate') as gpt_call:
+            self.assertEqual(decision.evaluate(self.payload, 'auto-openai')['provider'], 'jev')
+            gpt_call.assert_not_called()
+
     def test_no_provider_or_disabled_makes_no_request(self):
         with patch.dict(os.environ, {'OPENAI_API_KEY': ''}), \
                 patch.object(decision.jev, 'credential', side_effect=decision.jev.JevError('missing_key')), \
                 patch.object(decision.jev, 'evaluate') as jev_call, \
                 patch.object(decision, 'openai_evaluate') as gpt_call:
-            for provider in ('auto', 'none'):
+            for provider in ('auto', 'auto-openai', 'none'):
                 result = decision.evaluate(self.payload, provider)
                 self.assertEqual(result['status'], 'coordinator_required')
                 self.assertEqual(result['attempts'], [])

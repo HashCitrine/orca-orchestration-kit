@@ -109,7 +109,7 @@ python3 skills/orca-team/scripts/decision.py status
 python3 skills/orca-team/scripts/decision.py evaluate --provider openai --input request.json
 ```
 
-설정 파일에 `"decision": {"provider": "auto"}`를 추가하거나 `jev`·`openai`·`none`을 지정할 수 있습니다. 현재 요청의 선택을 `--provider`로 전달하면 설정보다 우선합니다. auto에서 Jev 실패 시 설정된 GPT로 같은 발췌를 한 번 보내며, 명시 제공자는 자동 전환하지 않습니다. 실패하면 재시도 없이 조정자가 판단합니다. 호출 전 목적과 최소 발췌, 대체 전송 가능성을 알립니다. 입력 예시는 [보조 판단 안내](skills/orca-team/references/decision.md)를 참고하세요.
+설정 파일에 `"decision": {"provider": "auto"}`를 추가하거나 `auto-openai`·`jev`·`openai`·`none`을 지정할 수 있습니다. 현재 요청의 선택을 `--provider`로 전달하면 설정보다 우선합니다. auto는 Jev → GPT, auto-openai는 GPT → Jev 순서로 인증이 있는 제공자에 같은 발췌를 한 번 대체 전송합니다. GPT 우선 자동 전환은 `"decision": {"provider": "auto-openai"}`로 설정합니다. jev/openai 단독 지정은 자동 전환하지 않습니다. 실패하면 재시도 없이 조정자가 판단합니다. 호출 전 목적과 최소 발췌, 대체 전송 가능성을 알립니다. 입력 예시는 [보조 판단 안내](skills/orca-team/references/decision.md)를 참고하세요.
 
 ## 작업자 수와 완료 후 정리
 

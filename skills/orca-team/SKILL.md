@@ -58,6 +58,6 @@ description: Coordinate Claude, Codex, agy and Grok through Orca when the user r
 - 사용자가 Entire 연동을 선택한 저장소에서는 [선택형 Entire 기록](references/entire.md)을 읽는다. Entire는 세션·커밋 근거이며 Orca/Git의 현재 상태와 운영 체크포인트를 대체하지 않는다. 스킬 설치·업데이트는 Entire 설치·활성화·훅 변경을 하지 않는다. 미설치·비활성이면 기존 절차로 진행한다.
 
 ## 보조 판단
-필요할 때 [선택형 보조 판단](references/decision.md)을 읽는다. `scripts/decision.py status`로 기존 인증을 확인하고 현재 요청 > decision.provider 설정 > auto 순으로 선택한다. auto는 Jev 우선, OpenAI만 설정되어 있으면 GPT Decisions를 사용한다. 인증 존재는 API 접근 성공의 증거가 아니다. 둘 다 없거나 none이면 조정자가 판단한다.
+필요할 때 [선택형 보조 판단](references/decision.md)을 읽는다. `scripts/decision.py status`로 기존 인증을 확인하고 현재 요청 > decision.provider 설정 > auto 순으로 선택한다. auto는 Jev 우선, OpenAI만 설정되어 있으면 GPT Decisions를 사용한다. auto-openai는 GPT 우선, 실패 시 인증이 있는 Jev로 한 번 전환한다. 인증 존재는 API 접근 성공의 증거가 아니다. 둘 다 없거나 none이면 조정자가 판단한다.
 
-호출 전 목적·선택 이유·전송할 최소 발췌와 자동 모드에서의 GPT 대체 가능성을 한국어로 알린다. auto에서 Jev 실패 시 설정된 GPT에 같은 발췌로 한 번 대체 호출하며, 명시 제공자는 자동 전환하지 않는다. 이후 실패하면 재시도 없이 조정자가 판단한다. 확률·점수는 보조 근거이며 권한, 지원 모델, 워커 실행이나 완료를 단독 결정하지 않는다.
+호출 전 목적·선택 이유·전송할 최소 발췌와 자동 모드에서의 다른 제공자 대체 가능성을 한국어로 알린다. auto는 Jev → GPT, auto-openai는 GPT → Jev 순서로 같은 발췌를 한 번 대체 호출하며, jev/openai 단독 지정은 자동 전환하지 않는다. 이후 실패하면 재시도 없이 조정자가 판단한다. 확률·점수는 보조 근거이며 권한, 지원 모델, 워커 실행이나 완료를 단독 결정하지 않는다.

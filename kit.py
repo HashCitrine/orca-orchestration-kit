@@ -503,8 +503,8 @@ def main():
             raise ValueError('unsupported configuration keys')
         decision=config.get('decision',{})
         if (not isinstance(decision,dict) or set(decision)-{'provider'}
-                or decision.get('provider','auto') not in ('auto','jev','openai','none')):
-            raise ValueError('decision.provider must be auto, jev, openai, or none')
+                or decision.get('provider','auto') not in ('auto','auto-openai','jev','openai','none')):
+            raise ValueError('decision.provider must be auto, auto-openai, jev, openai, or none')
         max_workers=config.get('max_workers')
         if max_workers is not None and (type(max_workers) is not int or max_workers < 1):
             raise ValueError('max_workers must be null (automatic) or a positive integer')

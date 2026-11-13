@@ -14,7 +14,7 @@ import urllib.request
 
 import jev
 
-PROVIDERS = ('auto', 'jev', 'openai', 'none')
+PROVIDERS = ('auto', 'auto-openai', 'jev', 'openai', 'none')
 OPENAI_ENDPOINT = 'https://api.openai.com/v1/decisions'
 OPENAI_MODEL = 'gpt-6-luna'
 
@@ -27,7 +27,7 @@ def configured_provider(config):
     section = config.get('decision', {})
     if (not isinstance(section, dict) or set(section) - {'provider'}
             or section.get('provider', 'auto') not in PROVIDERS):
-        raise DecisionError('invalid_config: decision.provider must be auto, jev, openai, or none')
+        raise DecisionError('invalid_config: decision.provider must be auto, auto-openai, jev, openai, or none')
     return section.get('provider', 'auto')
 
 
@@ -42,8 +42,9 @@ def status(provider='auto'):
     available = {'jev': jev_status,
                  'openai': {'configured': bool(os.environ.get('OPENAI_API_KEY', '').strip())}}
     selected = provider
-    if selected == 'auto':
-        selected = next((p for p in ('jev', 'openai') if available[p]['configured']), 'none')
+    if selected in ('auto', 'auto-openai'):
+        order = ('openai', 'jev') if selected == 'auto-openai' else ('jev', 'openai')
+        selected = next((p for p in order if available[p]['configured']), 'none')
     return {'requested_provider': provider, 'selected_provider': selected,
             'configured': selected != 'none' and available[selected]['configured'],
             'availability': 'credential presence only; API access unverified',
@@ -182,8 +183,10 @@ def evaluate(payload, provider='auto', announce=None):
                 'reason': 'disabled' if provider == 'none' else 'no configured decision provider',
                 'attempts': []}
     candidates = [selected]
-    if provider == 'auto' and selected == 'jev' and info['providers']['openai']['configured']:
-        candidates.append('openai')
+    if provider in ('auto', 'auto-openai'):
+        alternate = 'jev' if selected == 'openai' else 'openai'
+        if info['providers'][alternate]['configured']:
+            candidates.append(alternate)
     attempts = []
     for index, candidate in enumerate(candidates):
         if announce:
@@ -230,7 +233,7 @@ def main():
             else:
                 payload = json.loads(Path(args.input).read_text(encoding='utf-8'))
             def announce(candidate, fallback):
-                prefix = 'Jev 판단 실패: 같은 발췌로 대체 호출' if fallback else '보조 판단 호출'
+                prefix = '앞선 판단 실패: 같은 발췌로 대체 호출' if fallback else '보조 판단 호출'
                 print(prefix + ' → ' + candidate, file=sys.stderr)
             result = evaluate(payload, provider, announce)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
