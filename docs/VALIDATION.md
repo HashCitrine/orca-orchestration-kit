@@ -45,7 +45,7 @@
 
 `quick_validate.py skills/orca-team`: Skill is valid.
 `kit.py install` 및 `update`: 15개 파일 설치·갱신.
-`kit.py doctor`: orca/claude/codex/agy 실행 파일과 help 확인. 인증/모델 가용성 검증과는 구별한다.
+`kit.py doctor`: orca/claude/codex/agy/grok/opencode/pi 실행 파일과 help 확인. 인증/모델 가용성 검증과는 구별한다.
 Jev status: configured=true, credential_file. 키는 출력하지 않았다.
 
 초기 테스트에서 macOS /var 임시 경로가 심볼릭 링크 보호에 걸렸다. 테스트 임시 루트를 resolve하여 시스템 경로 별칭을 정규화한 뒤 통과했다. 실제 설치 대상의 심볼릭 링크 보호는 유지했다.
@@ -128,3 +128,15 @@ Claude/AGY quota validation: 28 automated tests passed (Orca payload conversion,
 - 미실행: opus/fable 및 sonnet 외 effort 조합의 실제 읽기 전용 Dispatch 검증. 작업자 실행이 필요하므로 사용자 요청 시 진행한다.
 - 추가 검증(2026-11-02): `setup --agent claude` 후 Run `run_273bb9f05d35`, Dispatch `ctx_6efaf931c338`: routing.json만 읽는 작업 성공, 저장소 변경 없음. launch.effective = claude / opus / high. `verify-profile --profile claude-opus --dispatch ctx_6efaf931c338`: verified. worker_done 처리·ack, worker-release 후 resource released 확인.
 - 설치본 `route --candidates`(implementation/design/review): claude-sonnet·claude-opus ready(verified_efforts high). claude-fable은 현재 계정에 Fable 한도 미보고로 제외(미검증). `--select-profile claude-opus` 실행 인자 `--agent claude --model opus --effort high` 확인.
+
+## OPENCODE-PI-001 (2026-11-14, macOS / Python 3.9.6)
+
+- 변경: Orca 작업자 id `opencode`와 `pi`를 kit의 agent 목록, setup/doctor, 프로필 검증, 라우팅, 스킬 설치 경로, usage 처리에 추가. OpenCode는 `effort_mode: "none"` + `effort: "default"`만, Pi는 `effort_mode: "flag"`만 허용. 기본 routing.json에는 계정별 모델을 추측해 넣지 않았다.
+- `TMPDIR=/private/tmp python3 -m unittest discover -s tests`: 63 tests, OK. 추가 테스트: 스킬 경로와 환경 변수 재정의, launch_args(`opencode`는 `--effort` 없음, `pi`는 `--effort` 포함), 후보/verified_efforts, 잘못된 effort_mode 거부, verify-profile의 OpenCode effort 없음/Pi effort 일치, usage unknown과 none-effort 대안 전환.
+- 기본 TMPDIR(`/var/folders/...`)에서는 기존 `safe_path`가 `/var` 심볼릭 링크를 충돌로 판단해 `test_decision` 1건이 실패한다. 이는 이번 변경과 무관한 기존 환경 제약이며, `/private/tmp`에서는 전체 통과한다.
+- `kit.py doctor --home <temp>`: orca/codex/claude/agy/grok/opencode/pi 모두 available, skill_roots에 `~/.config/opencode/skills`와 `~/.pi/agent/skills` 반영.
+- `kit.py setup --agent opencode|pi --home <temp>`: 두 CLI와 Orca 연결 확인. 기본 프로필이 없으므로 로컬 profiles 추가 안내를 반환했고 작업자는 실행하지 않았다.
+- `kit.py install --home <temp>`: managed_files 66, removed_files 0. 여섯 스킬 경로(Codex, Claude, AGY, Grok, OpenCode `~/.config/opencode/skills`, Pi `~/.pi/agent/skills`)에 `orca-team/SKILL.md` 설치 확인.
+- 임시 config로 `route --candidates` 실행: opencode/pi 후보가 blocked(검증 근거 없음)로 표시되고 launch_args는 생성되지 않았다. OpenCode flag, Pi none 등 잘못된 조합은 설정 검증에서 거부됐다.
+- 로컬 설치본 갱신: 기존 Codex/Claude/AGY/Grok 스킬 디렉터리를 백업한 뒤 `kit.py install`로 6개 경로(총 66 managed files)를 다시 설치했다. manifest 66개 해시 모두 일치하고, 모든 설치본의 `scripts/kit.py`·`usage.py`가 저장소와 같다. 기존 설치본에만 있던 `worker-show --full` 수정은 소스에도 반영해 보존했다.
+- Orca 1.4.258의 `worker-start` 도움말과 앱의 agent catalog에서 `opencode`/`pi` id 및 Pi `--thinking`(effort), OpenCode 모델 선택 제약을 확인했다. 실제 OpenCode/Pi Dispatch 실행과 launch.effective 검증은 이번 변경에서 수행하지 않았다. 사용자 요청 시 `setup` 후 작은 읽기 전용 작업으로 검증한다.

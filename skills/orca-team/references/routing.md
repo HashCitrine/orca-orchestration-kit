@@ -87,3 +87,47 @@ Orca 작업자 id는 `grok`이며 별칭 변환은 없습니다. 기본 route는
 - `grok-4.7`: `grok-4.7` (high, flag). implementation·test·design·debug·review 후보. Orca 기본 모델입니다.
 
 세 프로필의 quota group은 `grok`입니다. Orca `rateLimits.grok`가 보고한 창만 기록하며, `session`이 null이면 5시간 창을 만들지 않습니다. 모델이 달라도 같은 그룹이므로 한도가 분리되지 않습니다. effort는 `--select-profile <profile> --effort low|medium|high`만 허용합니다. 카탈로그가 4.6·4.7에 `xhigh`를 두더라도 자동 선택과 조정자 effort 선택에는 넣지 않습니다. `grok-4.7-build-fast`처럼 CLI에만 있고 시드 카탈로그에 없는 id는 기본 프로필에 넣지 않습니다. 구현 도구와 동일한 `agent: grok`이면 독립 리뷰가 아닙니다.
+
+## OpenCode·Pi 로컬 프로필
+
+Orca는 작업자 id `opencode`와 `pi`를 지원하지만 모델·계정 구성은 사용자 환경마다 다릅니다. 키트는 두 도구의 기본 프로필을 routing.json에 넣지 않고, 로컬 `profiles`와 `candidates`로 승인하는 방식만 제공합니다. `setup --agent opencode|pi`는 CLI·Orca 연결·스킬 설치를 확인하고, 로컬 프로필이 없으면 추가 방법을 안내합니다.
+
+| 도구 | Orca id | 모델 인자 | effort | 키트 설정 |
+|---|---|---|---|---|
+| OpenCode | `opencode` | `--model provider/model` (기존 작업 공간에서만) | 지원 안 함 | `effort_mode: "none"`, `effort: "default"` |
+| Pi | `pi` | `--model provider/model` | `--effort` → Pi `--thinking` | `effort_mode: "flag"` |
+
+OpenCode 모델 ID는 `opencode models`, Pi 모델 ID는 `pi --list-models`에서 확인합니다. 확인하지 않은 모델 이름을 예시로 넣지 않습니다. OpenCode에 `--model`을 전달하는 작업은 새 워크트리 생성과 함께 시작할 수 없으므로 `--worktree current` 또는 기존 워크트리를 사용합니다. 이 제한을 우회하려고 모델 선택을 생략한 뒤 다른 모델로 실행하지 않습니다.
+
+```json
+{
+  "profiles": {
+    "opencode-default": {
+      "agent": "opencode",
+      "model": "provider/model",
+      "effort": "default",
+      "effort_mode": "none"
+    },
+    "pi-high": {
+      "agent": "pi",
+      "model": "provider/model",
+      "effort": "high",
+      "effort_mode": "flag"
+    }
+  },
+  "candidates": {
+    "implementation": ["opencode-default", "pi-high", "standard"]
+  }
+}
+```
+
+`candidates`는 해당 작업 유형의 기존 후보 목록을 교체하고 기본 route 프로필은 첫 항목으로 유지합니다. 위 예시에서 `provider/model`은 실제 확인한 값으로 바꿉니다. `standard`를 남기려면 목록에 포함하세요. 두 프로필 모두 `setup` 후 작은 읽기 전용 Dispatch를 실행하고 `verify-profile`로 등록해야 ready가 됩니다. OpenCode는 `verify-profile --profile opencode-default --dispatch <id>`처럼 effort 없이, Pi는 `--effort high`를 포함해 등록합니다. `verified_efforts`는 OpenCode가 `["default"]`, Pi가 `["high"]`처럼 표시됩니다.
+
+OpenCode·Pi는 Orca `account list`의 자동 쿼터 집계 대상이 아닙니다. `usage refresh`는 두 도구에 대해 unknown을 반환하며, unknown은 여유가 아닙니다. 수동으로 관찰하려면 프로필에 `quota_groups`를 지정하고 `usage set`으로 기록합니다.
+
+```sh
+python3 kit.py usage set --agent opencode --account local --group local-models --remaining 80 --window-minutes 300 --resets-at 1900000000
+python3 kit.py usage set --agent pi --account local --group pi-models --remaining 80 --window-minutes 300 --resets-at 1900000000
+```
+
+수동 관찰을 사용하지 않으면 잔여량은 unknown으로 남고, 알려진 보호 한도가 없으므로 검증된 프로필 선택 자체는 가능합니다. 자동 대안 전환은 별도 한도가 확인된 경우에만 동작합니다.

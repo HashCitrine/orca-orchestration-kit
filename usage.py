@@ -142,7 +142,8 @@ def orca_records(payload,agent):
 
 
 def refresh(state,config,agent='codex',orca_reader=None):
-    if agent not in ('codex','claude','agy','grok'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+    if agent not in ('codex','claude','agy','grok','opencode','pi'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+    if agent in ('opencode','pi'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
     try:
         if agent!='codex':
             if orca_reader is None:raise ValueError('Orca reader unavailable')
@@ -182,8 +183,10 @@ def select(base,config,state,task_type,resolve,compare_effort=True):
     if not base.get('explicit'):
         for name in p['alternatives'].get(task_type,[]):
             alternative=resolve(name)
-            if alternative.get('status')!='ready' or alternative['effort'] not in ('low','medium','high'):continue
-            if compare_effort and task_type!='simple' and {'low':0,'medium':1,'high':2}.get(alternative['effort'],-1)<{'low':0,'medium':1,'high':2}.get(base['effort'],99):continue
+            if alternative.get('status')!='ready':continue
+            fixed=alternative.get('effort_mode')=='none' or base.get('effort_mode')=='none'
+            if not fixed and alternative['effort'] not in ('low','medium','high'):continue
+            if compare_effort and not fixed and task_type!='simple' and {'low':0,'medium':1,'high':2}.get(alternative['effort'],-1)<{'low':0,'medium':1,'high':2}.get(base['effort'],99):continue
             other=status(state,alternative,config)
             old={(w['agent'],w['account'],w['group']) for w in q['windows']}
             new={(w['agent'],w['account'],w['group']) for w in other['windows']}

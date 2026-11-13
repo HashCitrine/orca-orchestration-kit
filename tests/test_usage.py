@@ -120,6 +120,22 @@ class UsageTests(unittest.TestCase):
         failed={'ok':True,'result':{'rateLimits':{'grok':{'status':'error','error':'failed','updatedAt':ms(now)}}}}
         self.assertEqual(usage.refresh(self.state,{},'grok',lambda:failed)['status'],'unknown')
         self.assertNotIn('grok',usage.load(self.state)['active'])
+    def test_refresh_extended_agents_is_unknown(self):
+        for agent in ['opencode','pi']:
+            result=usage.refresh(self.state,{},agent)
+            self.assertEqual((result['status'],result['agent']),('unknown',agent))
+            self.assertIn('manual input',result['reason'])
+
+    def test_select_none_effort_alternative(self):
+        now=usage.time.time()
+        usage.observe(self.state,'opencode','oc','oc',4,300,now+1000)
+        usage.observe(self.state,'pi','pi','pi',80,300,now+1000)
+        base={**self.p,'agent':'opencode','profile':'oc','effort':'default','effort_mode':'none','quota_groups':['oc']}
+        alternative={**base,'agent':'pi','profile':'pi','effort':'high','effort_mode':'flag','quota_groups':['pi']}
+        config={'usage':{'alternatives':{'design':['pi']}}}
+        selected=usage.select(base,config,self.state,'design',lambda name:alternative)
+        self.assertEqual(selected['profile'],'pi')
+
     def test_input_validation(self):
         for value in [-1,101,float('nan')]:
             with self.assertRaises(ValueError):self.obs(value)

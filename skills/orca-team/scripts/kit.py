@@ -13,6 +13,8 @@ import sys
 import usage
 
 NAME = 'orca-team'
+AGENTS = ('codex','claude','agy','grok','opencode','pi')
+AGENT_IDS = {'agy':'antigravity'}
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -27,9 +29,15 @@ def write_json(path, value):
     temp.replace(path)
 
 def roots(home, config):
+    if platform.system() == 'Windows' and os.environ.get('APPDATA'):
+        config_home = Path(os.environ['APPDATA']).expanduser()
+    else:
+        config_home = Path(os.environ.get('XDG_CONFIG_HOME', str(home/'.config'))).expanduser()
     values = {'codex': Path(os.environ.get('CODEX_HOME', str(home/'.codex')))/'skills',
               'claude': home/'.claude/skills', 'agy': home/'.gemini/config/skills',
-              'grok': Path(os.environ.get('GROK_HOME', str(home/'.grok')))/'skills'}
+              'grok': Path(os.environ.get('GROK_HOME', str(home/'.grok')))/'skills',
+              'opencode': Path(os.environ.get('OPENCODE_CONFIG_DIR', str(config_home/'opencode'))).expanduser()/'skills',
+              'pi': Path(os.environ.get('PI_CODING_AGENT_DIR', str(home/'.pi/agent'))).expanduser()/'skills'}
     for key, value in config.get('skill_roots', {}).items():
         if key not in values:
             raise ValueError('unknown skill root: '+key)
@@ -155,7 +163,7 @@ def probe(command):
         return {'available': True, 'path': executable, 'help_ok': False}
 
 def doctor(home, config, state):
-    commands = {'orca': orca_command(), 'claude':'claude', 'codex':'codex', 'agy':'agy', 'grok':'grok'}
+    commands = {'orca': orca_command(), **{agent: agent for agent in AGENTS}}
     commands.update(config.get('executables', {}))
     observations = {k: probe(v) for k,v in commands.items()}
     claude_worker = claude_readiness(home)
@@ -194,12 +202,23 @@ def routing_config(config):
     for name, p in profiles.items():
         if not isinstance(p, dict) or set(p)-{'agent','model','effort','effort_mode','fallback','upgrade','quota_groups','require_quota'}:
             raise ValueError('invalid profile: '+name)
-        if p.get('agent') not in ('codex','claude','agy','grok') or not isinstance(p.get('model'),str) or not p['model'].strip():
+        if p.get('agent') not in AGENTS or not isinstance(p.get('model'),str) or not p['model'].strip():
             raise ValueError('profile requires agent and model: '+name)
-        if p.get('effort') not in ('low','medium','high','xhigh','max','ultra') or p.get('effort_mode') not in ('flag','embedded'):
+        if p.get('effort_mode') not in ('flag','embedded','none'):
+            raise ValueError('invalid effort or effort_mode: '+name)
+        if p['effort_mode']=='none':
+            if p.get('effort')!='default':
+                raise ValueError('effort_mode none requires effort default: '+name)
+        elif p.get('effort') not in ('low','medium','high','xhigh','max','ultra'):
             raise ValueError('invalid effort or effort_mode: '+name)
         if p['effort_mode']=='embedded' and not p['model'].endswith('-'+p['effort']):
             raise ValueError('embedded effort conflicts with model: '+name)
+        if p['agent']=='opencode' and p['effort_mode']!='none':
+            raise ValueError('opencode profiles require effort_mode none: '+name)
+        if p['effort_mode']=='none' and p['agent']!='opencode':
+            raise ValueError('effort_mode none is only for opencode: '+name)
+        if p['agent']=='pi' and p['effort_mode']!='flag':
+            raise ValueError('pi profiles require effort_mode flag: '+name)
         if 'quota_groups' in p and (not isinstance(p['quota_groups'],list) or any(not isinstance(g,str) or not g for g in p['quota_groups'])):
             raise ValueError('invalid quota_groups')
         if 'require_quota' in p and (not isinstance(p['require_quota'],bool) or (p['require_quota'] and not p.get('quota_groups'))):
@@ -246,7 +265,7 @@ def route_candidates(config, state, task_type, complexity='normal', implementati
         checked=route_base(config,state,task_type,complexity,profile=name,implementation_agent=implementation_agent)
         quota=usage.status(state,p,config)
         reasons=[r['reason'] for r in checked.get('rejected',[])]
-        if p['effort'] not in ('low','medium','high'):reasons.append('automatic effort exceeds high')
+        if not automatic_effort_ok(p):reasons.append('automatic effort exceeds high')
         if quota['state']=='protected':reasons.append('quota reserve protected')
         gate=quota_gate(config,state,p)
         if gate:reasons.append(gate)
@@ -267,7 +286,7 @@ def select_candidate(config, state, task_type, name, reason, complexity='normal'
         # Only the chosen profile takes the coordinator effort; alternatives keep their own verified effort.
         chosen=effort if n==name else None
         result=route_base(config,state,task_type,complexity,profile=n,effort=chosen,implementation_agent=implementation_agent)
-        if (chosen or profiles[n]['effort']) not in ('low','medium','high'):
+        if not automatic_effort_ok({**profiles[n],**({'effort':chosen} if chosen else {})}):
             return {**result,'status':'blocked','launch_args':[],'reason':'automatic effort exceeds high'}
         gate=quota_gate(config,state,profiles[n]) if result.get('status')=='ready' else None
         if gate:return {**result,'status':'blocked','launch_args':[],'reason':gate}
@@ -292,8 +311,12 @@ def quota_gate(config, state, p):
     return 'required quota not reported for this account: '+','.join(missing) if missing else None
 
 
+def automatic_effort_ok(p):
+    return p.get('effort_mode')=='none' or p.get('effort') in ('low','medium','high')
+
+
 def verified_efforts(config, state, p):
-    efforts=['low','medium','high'] if p['effort_mode']=='flag' else [p['effort']]
+    efforts=['default'] if p['effort_mode']=='none' else (['low','medium','high'] if p['effort_mode']=='flag' else [p['effort']])
     evidence=read_json(state/'model-evidence.json',{});identity=tool_identity(p['agent'],config);now=datetime.now(timezone.utc)
     found=[]
     for e in efforts:
@@ -335,10 +358,17 @@ def route_base(config, state, task_type, complexity='normal', profile=None, mode
         seen.add(selected);p=dict(profiles[selected])
         for key,value in [('agent',agent),('model',model),('effort',effort)]:
             if value:p[key]=value
+        if agent=='opencode':
+            if effort:
+                return {'status':'blocked','reason':'opencode does not support --effort; use a profile with effort_mode none'}
+            p['effort']='default';p['effort_mode']='none'
+        elif agent=='pi' and p['effort_mode']!='flag':
+            p['effort']=p['effort'] if p['effort'] in ('low','medium','high') else 'high'
+            p['effort_mode']='flag'
         # Revalidate explicit overrides as complete profile definitions.
         routing_config({'profiles':{'override':p}})
         reason=None
-        if not explicit and p['effort'] not in ('low','medium','high'):
+        if not explicit and not automatic_effort_ok(p):
             reason='automatic effort exceeds high'
         record=evidence.get(profile_key(p),{})
         try:
@@ -352,7 +382,7 @@ def route_base(config, state, task_type, complexity='normal', profile=None, mode
             rejected.append({'profile':selected,'reason':reason})
             if explicit or prior:break
             selected=p.get('fallback');continue
-        argv=['--agent',{'agy':'antigravity'}.get(p['agent'],p['agent']),'--model',p['model']]
+        argv=['--agent',AGENT_IDS.get(p['agent'],p['agent']),'--model',p['model']]
         if p['effort_mode']=='flag':argv+=['--effort',p['effort']]
         return {'status':'ready','profile':selected,**p,'launch_args':argv,
                 'reason':task_type+'/'+complexity,'rejected':rejected,'explicit':explicit,
@@ -412,7 +442,7 @@ def setup(home, config, state, agent):
     if not candidates:next_steps.append('이 도구의 기본 프로필이 없습니다. 에이전트에게 지원 모델·effort를 확인하고 로컬 profiles에 전체 프로필을 추가하도록 요청하세요.')
     elif any(v!='ready' for v in candidates.values()):next_steps.append('Orca의 새 에이전트 대화에서 아래 요청문으로 작은 모델 검증을 진행하세요.')
     if not next_steps:next_steps.append('Orca에서 작업할 프로젝트를 열고 새 대화에서 orca-team을 호출하세요.')
-    identities={a:tool_identity(a,config) for a in ('codex','claude','agy','grok')}
+    identities={a:tool_identity(a,config) for a in AGENTS}
     write_json(state/'setup-observation.json',{'observed_at':datetime.now(timezone.utc).isoformat(),'identities':identities})
     return {'agent':agent,'checks':checks,'profiles':candidates,'next_steps':next_steps,
             'authentication':'CLI 존재만 확인했습니다. 각 도구에서 로그인 여부를 확인하세요.',
@@ -431,10 +461,10 @@ def verify_profile(config,state,name,dispatch_id,effort=None):
     if name not in profiles:raise ValueError('알 수 없는 프로필입니다.')
     p=dict(profiles[name])
     if effort is not None:
-        if p['effort_mode']!='flag':raise ValueError('ID 내장 effort 프로필에는 --effort를 사용할 수 없습니다.')
+        if p['effort_mode']!='flag':raise ValueError('flag 방식 프로필에만 --effort를 사용할 수 있습니다.')
         p['effort']=effort;routing_config({'profiles':{'override':p}})
     # Query the live runtime, never accept caller-provided completion JSON.
-    payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id)
+    payload=orca_read(config,'orchestration','worker-show','--dispatch',dispatch_id,'--full')
     try:
         result=payload['result'];dispatch=result['dispatch'];worker=result['worker']
         if dispatch['id']!=dispatch_id or worker['dispatchId']!=dispatch_id:
@@ -443,7 +473,7 @@ def verify_profile(config,state,name,dispatch_id,effort=None):
         if dispatch['status']!='completed' or worker['state']!='succeeded':
             raise ValueError('성공한 완료 작업만 등록할 수 있습니다.')
         effective=worker['startOptions']['launch']['effective']
-        expected_agent={'agy':'antigravity'}.get(p['agent'],p['agent'])
+        expected_agent=AGENT_IDS.get(p['agent'],p['agent'])
         expected_effort=p['effort'] if p['effort_mode']=='flag' else None
         if (effective['agent'],effective['model'],effective.get('effort'))!=(expected_agent,p['model'],expected_effort):
             raise ValueError('실제 도구·모델·effort가 프로필과 다릅니다.')
@@ -460,7 +490,8 @@ def verify_profile(config,state,name,dispatch_id,effort=None):
         raise ValueError('검증 필드 또는 작업 전 setup 기록이 없습니다. 등록하지 않았습니다.') from None
     record={'verified_at':completed.isoformat(),'identity':identity,'dispatch_id':dispatch_id,
             'source':'Orca worker-show: succeeded + launch.effective','actual_model':effective['model'],
-            'actual_effort':p['effort'],'runtime_id':payload.get('_meta',{}).get('runtimeId')}
+            'actual_effort':p['effort'] if p['effort_mode']=='flag' else None,
+            'runtime_id':payload.get('_meta',{}).get('runtimeId')}
     path=state/'model-evidence.json';evidence=read_json(path,{})
     if not isinstance(evidence,dict):raise ValueError('검증 파일이 JSON 객체가 아닙니다.')
     key=profile_key(p);changed=evidence.get(key)!=record
@@ -482,11 +513,11 @@ def main():
     parser.add_argument('--selection-reason',help='why the coordinator selected this candidate')
     parser.add_argument('--model')
     parser.add_argument('--effort')
-    parser.add_argument('--agent', choices=['codex','claude','agy','grok'])
+    parser.add_argument('--agent', choices=list(AGENTS))
     parser.add_argument('--prior', type=Path, help='previous route JSON for a quality-failure upgrade')
     parser.add_argument('--failure', choices=['quality','auth','network','installation'])
     parser.add_argument('--settled', action='store_true', help='coordinator has verified prior Dispatch settlement')
-    parser.add_argument('--implementation-agent', choices=['codex','claude','agy','grok'])
+    parser.add_argument('--implementation-agent', choices=list(AGENTS))
     parser.add_argument('usage_action',nargs='?',choices=['refresh','show','set'])
     parser.add_argument('--account',help='local non-personal account label for manual input')
     parser.add_argument('--group')
@@ -512,7 +543,7 @@ def main():
             values=config.get(section,{})
             if not isinstance(values,dict) or any(not isinstance(v,str) or not v.strip() for v in values.values()):
                 raise ValueError(section+' must map names to nonempty strings')
-            allowed={'codex','claude','agy','grok'}|({'orca'} if section=='executables' else set())
+            allowed=set(AGENTS)|({'orca'} if section=='executables' else set())
             if set(values)-allowed:
                 raise ValueError('unknown agent in '+section)
         for agent in config.get('efforts',{}):
@@ -529,7 +560,7 @@ def main():
                     # One Orca call serves Claude, AGY and Grok.
                     if not cached:cached.append(orca_read(config,'account','list'))
                     return cached[0]
-                agents=[args.agent] if args.agent else ['codex','claude','agy','grok']
+                agents=[args.agent] if args.agent else list(AGENTS)
                 refreshed=[usage.refresh(state,config,a,orca_limits) for a in agents]
                 result=refreshed[0] if args.agent else {'status':'refreshed','agents':refreshed}
             elif args.usage_action=='show':

@@ -56,6 +56,21 @@ class OnboardingTests(unittest.TestCase):
                 result=kit.setup(self.root,{},self.state,agent)
             self.assertEqual(result['agent'],agent);self.assertIn(agent,result['prompt'])
 
+    def test_verify_opencode_and_pi_effort(self):
+        now=datetime.now(timezone.utc)
+        kit.write_json(self.state/'setup-observation.json',{'observed_at':(now-timedelta(minutes=3)).isoformat(),'identities':{'opencode':self.identity,'pi':self.identity}})
+        config={'profiles':{
+            'oc':{'agent':'opencode','model':'openai/gpt-5.4','effort':'default','effort_mode':'none'},
+            'pi':{'agent':'pi','model':'openai/gpt-5.4','effort':'high','effort_mode':'flag'}}}
+        for name,agent,effort in [('oc','opencode',None),('pi','pi','high')]:
+            data=copy.deepcopy(self.data)
+            data['result']['worker']['startOptions']['launch']['effective']={'agent':agent,'model':'openai/gpt-5.4','effort':effort}
+            with patch.object(kit,'orca_read',return_value=data):
+                self.assertEqual(kit.verify_profile(config,self.state,name,'d')['status'],'verified')
+        data['result']['worker']['startOptions']['launch']['effective']={'agent':'opencode','model':'openai/gpt-5.4','effort':'high'}
+        with patch.object(kit,'orca_read',return_value=data),self.assertRaises(ValueError):
+            kit.verify_profile(config,self.state,'oc','d')
+
     def test_embedded_effort_and_remote_environment(self):
         now=datetime.now(timezone.utc)
         kit.write_json(self.state/'setup-observation.json',{'observed_at':(now-timedelta(minutes=3)).isoformat(),'identities':{'agy':self.identity}})

@@ -87,3 +87,40 @@ Orca 작업자 id는 `grok`이며 별칭 변환은 없습니다. 기본 route는
 - `grok-4.7`: `grok-4.7` (high, flag). implementation·test·design·debug·review 후보. Orca 기본 모델입니다.
 
 세 프로필의 quota group은 `grok`입니다. Orca `rateLimits.grok`가 보고한 창만 기록하며, `session`이 null이면 5시간 창을 만들지 않습니다. 모델이 달라도 같은 그룹이므로 한도가 분리되지 않습니다. effort는 `--select-profile <profile> --effort low|medium|high`만 허용합니다. 카탈로그가 4.6·4.7에 `xhigh`를 두더라도 자동 선택과 조정자 effort 선택에는 넣지 않습니다. `grok-4.7-build-fast`처럼 CLI에만 있고 시드 카탈로그에 없는 id는 기본 프로필에 넣지 않습니다. 구현 도구와 동일한 `agent: grok`이면 독립 리뷰가 아닙니다.
+
+## OpenCode·Pi (로컬 프로필)
+
+Orca 작업자 id는 `opencode`와 `pi`입니다. 두 도구의 모델·계정은 사용자마다 다르므로 기본 `routing.json`에 모델을 넣지 않고, 로컬 `profiles`와 `candidates`로 승인합니다. `python3 kit.py setup --agent opencode` 또는 `--agent pi`로 CLI·Orca 연결·스킬 설치를 확인한 뒤, 실제 모델을 확인해 프로필을 추가합니다.
+
+| 도구 | 모델 확인 | effort | 프로필 형식 |
+|---|---|---|---|
+| OpenCode | `opencode models` | 지원 안 함 | `{"agent":"opencode","model":"provider/model","effort":"default","effort_mode":"none"}` |
+| Pi | `pi --list-models` | `--effort` → `--thinking` | `{"agent":"pi","model":"provider/model","effort":"high","effort_mode":"flag"}` |
+
+OpenCode의 `--model` 선택은 기존 작업 공간에서만 적용됩니다. 새 워크트리를 만들면서 `--model`을 함께 전달하면 Orca가 거부하므로 `--worktree current` 또는 기존 워크트리를 사용합니다. OpenCode 프로필은 `effort_mode: "none"`만 허용하고, Pi 프로필은 `effort_mode: "flag"`만 허용합니다. 이 검증을 통과하지 못한 설정은 실행 전에 거부됩니다.
+
+```json
+{
+  "profiles": {
+    "opencode-default": {
+      "agent": "opencode",
+      "model": "provider/model",
+      "effort": "default",
+      "effort_mode": "none"
+    },
+    "pi-high": {
+      "agent": "pi",
+      "model": "provider/model",
+      "effort": "high",
+      "effort_mode": "flag"
+    }
+  },
+  "candidates": {
+    "implementation": ["opencode-default", "pi-high", "standard"]
+  }
+}
+```
+
+스킬은 OpenCode의 `~/.config/opencode/skills`(또는 `OPENCODE_CONFIG_DIR`/`XDG_CONFIG_HOME` 기준)와 Pi의 `~/.pi/agent/skills`(또는 `PI_CODING_AGENT_DIR` 기준)에도 설치됩니다. `install`/`update`는 두 경로에 키트가 관리하는 파일만 씁니다.
+
+두 도구는 Orca의 자동 쿼터 집계 대상이 아닙니다. `usage refresh`는 unknown을 반환하며, unknown은 여유가 아닙니다. 프로필에 `quota_groups`를 지정한 뒤 `usage set`으로 수동 관찰할 수 있습니다. OpenCode는 `verify-profile --profile <name> --dispatch <id>`, Pi는 `--effort <low|medium|high>`를 포함해 검증합니다.
