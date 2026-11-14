@@ -121,7 +121,7 @@ class UsageTests(unittest.TestCase):
         self.assertEqual(usage.refresh(self.state,{},'grok',lambda:failed)['status'],'unknown')
         self.assertNotIn('grok',usage.load(self.state)['active'])
     def test_refresh_extended_agents_is_unknown(self):
-        for agent in ['opencode','pi']:
+        for agent in ['opencode','pi','omp']:
             result=usage.refresh(self.state,{},agent)
             self.assertEqual((result['status'],result['agent']),('unknown',agent))
             self.assertIn('manual input',result['reason'])

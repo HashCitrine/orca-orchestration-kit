@@ -10,11 +10,12 @@
 | Grok | Orca `account list --json`의 `rateLimits.grok`로 자동 조회. 보고된 창만 사용하며 계정 라벨은 `orca:grok` |
 | OpenCode | 자동 조회 없음. unknown으로 두고 필요하면 `usage set`으로 수동 관찰 |
 | Pi | 자동 조회 없음. unknown으로 두고 필요하면 `usage set`으로 수동 관찰 |
+| OMP | 자동 조회 없음. unknown으로 두고 필요하면 `usage set`으로 수동 관찰 |
 
 Claude·AGY·Grok 값은 Orca가 작업자를 실행하는 활성 계정 기준으로 Orca가 주기적으로 갱신한 집계입니다. 기록 시각은 조회 시각이 아니라 Orca의 갱신 시각(updatedAt)이므로, Orca가 5분 넘게 갱신하지 못하면 미확인으로 처리됩니다. Orca가 상태 오류를 보고하면 해당 도구의 이전 관찰을 배정에 쓰지 않습니다. 수동 입력은 대체 수단으로 남아 있으며 같은 창의 유효한 자동 결과가 우선합니다.
 
 ```sh
-python3 kit.py usage refresh              # codex, claude, agy, grok 자동 갱신; opencode, pi는 unknown
+python3 kit.py usage refresh              # codex, claude, agy, grok 자동 갱신; opencode, pi, omp는 unknown
 python3 kit.py usage refresh --agent agy  # 하나만
 python3 kit.py usage show
 python3 kit.py usage show --json
@@ -79,13 +80,14 @@ Argon 한도는 플랜에 따라 별도이거나 Gemini 한도에 포함된다�
 
 Grok 프로필의 quota group은 `grok`입니다. Orca가 `weekly`만 보고하고 `session`이 null이면 주간 창만 기록합니다. 5시간 창이 있다고 가정하지 않습니다. grok-4.5·grok-4.6·grok-4.7은 이 그룹을 공유합니다. 계정 라벨은 `orca:grok`이며 이메일은 저장하지 않습니다.
 
-## OpenCode·Pi
+## OpenCode·Pi·OMP
 
-OpenCode와 Pi는 Orca의 자동 쿼터 집계 대상이 아닙니다. `usage refresh`는 두 도구에 대해 `unknown`을 반환하며, unknown은 여유라는 뜻이 아닙니다. 수동 관찰을 사용하려면 프로필에 `quota_groups`를 지정하고 같은 그룹 이름으로 `usage set`을 실행합니다.
+OpenCode·Pi·OMP는 Orca의 자동 쿼터 집계 대상이 아닙니다. `usage refresh`는 세 도구에 대해 `unknown`을 반환하며, unknown은 여유라는 뜻이 아닙니다. 수동 관찰을 사용하려면 프로필에 `quota_groups`를 지정하고 같은 그룹 이름으로 `usage set`을 실행합니다.
 
 ```sh
 python3 kit.py usage set --agent opencode --account local --group opencode-models --remaining 80 --window-minutes 300 --resets-at 1900000000
 python3 kit.py usage set --agent pi --account local --group pi-models --remaining 80 --window-minutes 300 --resets-at 1900000000
+python3 kit.py usage set --agent omp --account local --group omp-models --remaining 80 --window-minutes 300 --resets-at 1900000000
 ```
 
 수동 관찰이 없으면 자동 대안 전환은 일어나지 않지만, 알려진 보호 한도가 없으므로 검증된 프로필의 선택 자체는 가능합니다. OpenCode는 effort를 지원하지 않으므로 effort 기반 대안 비교에서 제외됩니다.

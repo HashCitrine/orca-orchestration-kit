@@ -107,3 +107,9 @@ in_progress: 작업별 승인 후보 조회·선택, Claude 프로필과 구독 
 현재: 소스에 Orca 작업자 id `opencode`와 `pi` 지원을 추가했다. 두 도구는 계정별 모델 차이 때문에 기본 routing.json 프로필을 두지 않고 로컬 `profiles`/`candidates`로 승인한다. OpenCode는 effort 없이(`effort_mode: "none"`), Pi는 flag effort(`--thinking`)로 검증한다. 스킬 설치 경로와 doctor/setup/usage 처리도 확장했다.
 검증: `TMPDIR=/private/tmp python3 -m unittest discover -s tests` 63개 통과. 로컬 4개 기존 설치본을 백업한 뒤 6개 경로에 재설치했고, 원격 추가 references를 반영한 뒤 manifest 78개가 일치한다. 실제 OpenCode/Pi Dispatch 검증은 아직 수행하지 않았다.
 다음: `setup --agent opencode|pi` 후 실제 모델을 확인해 로컬 프로필을 추가하고, 작은 읽기 전용 Dispatch 성공 시 `verify-profile`로 등록한다. 설치본은 이미 갱신했다.
+
+## OMP-001 (2026-11-14)
+
+현재: 소스에 Orca 작업자 id `omp` 지원을 추가했다. OMP는 계정별 모델 차이 때문에 기본 routing.json 프로필을 두지 않고 로컬 `profiles`/`candidates`로 승인한다. effort는 flag만 허용하고 `--effort`가 OMP `--thinking`으로 전달되며, 스킬은 OMP가 읽는 `~/.agents/skills`에 설치한다. usage는 자동 집계가 없어 unknown으로 둔다.
+검증: `TMPDIR=/private/tmp python3 -m unittest discover -s tests` 65개 통과. `kit.py doctor`, `setup --agent omp`, `usage refresh --agent omp`, `kit.py install`(managed_files 91, removed_files 0)로 일곱 설치 경로와 OMP 스킬 인식을 확인했다. 실제 OMP Dispatch 검증은 아직 수행하지 않았다.
+다음: `setup --agent omp` 후 `omp models`로 실제 모델 selector를 확인해 로컬 프로필을 추가하고, 작은 읽기 전용 Dispatch 성공 시 `verify-profile`로 등록한다.

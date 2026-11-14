@@ -142,8 +142,8 @@ def orca_records(payload,agent):
 
 
 def refresh(state,config,agent='codex',orca_reader=None):
-    if agent not in ('codex','claude','agy','grok','opencode','pi'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
-    if agent in ('opencode','pi'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+    if agent not in ('codex','claude','agy','grok','opencode','pi','omp'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
+    if agent in ('opencode','pi','omp'):return {'status':'unknown','agent':agent,'reason':'automatic adapter unavailable; use manual input'}
     try:
         if agent!='codex':
             if orca_reader is None:raise ValueError('Orca reader unavailable')

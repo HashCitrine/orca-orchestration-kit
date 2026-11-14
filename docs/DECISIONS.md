@@ -18,3 +18,7 @@ AGY(Antigravity)를 단일/역할형 프로필(`light`, `review`)에 국한하�
 ## 2026-11-14: OpenCode·Pi 작업자 지원
 
 Orca 작업자 id `opencode`와 `pi`를 키트에서 선택할 수 있게 한다. 두 도구의 모델 ID와 가용 모델은 계정·설치마다 달라 기본 routing.json에 모델을 넣지 않고, 로컬 `profiles`와 `candidates`로 승인한다. OpenCode는 Orca worker-start가 effort를 지원하지 않으므로 `effort_mode: "none"`, `effort: "default"`만 허용하고 launch_args에 `--effort`를 넣지 않는다. Pi는 `effort_mode: "flag"`만 허용하며 Orca가 `--effort`를 Pi `--thinking`으로 전달한다. OpenCode의 `--model` 선택은 기존 작업 공간에서만 유효하다. 두 도구 모두 Orca의 자동 쿼터 집계 대상이 아니므로 usage unknown을 유지하고, 프로필의 `quota_groups`와 `usage set`으로만 수동 관찰한다. 스킬은 OpenCode `~/.config/opencode/skills`와 Pi `~/.pi/agent/skills`에도 설치하며 환경 변수 재정의를 허용한다. 검증은 setup 이후 성공한 Dispatch의 launch.effective가 실제 agent/model/effort와 일치할 때만 등록한다.
+
+## 2026-11-14: OMP 작업자 지원
+
+Orca 작업자 id `omp`를 키트에서 선택할 수 있게 한다. OMP는 모델 role/selector를 Orca에 그대로 전달하므로 `--model`은 `omp models`가 보고한 `provider/model` selector를 쓰고, 모델 ID에 effort를 내장하지 않는다. effort는 `effort_mode: "flag"`만 허용하며 Orca가 `--effort`를 OMP `--thinking`으로 전달한다. `embedded`와 `none` OMP 프로필은 설정 검증에서 거부한다. OMP 모델 ID와 가용 provider는 계정·설치마다 달라 기본 routing.json에 모델을 넣지 않고, 로컬 `profiles`와 `candidates`로 승인한다. 명시 `--agent omp` override는 기존 Pi와 같은 방식으로 effort를 low·medium·high 중 하나로 보정해 flag로 실행한다. 스킬은 OMP가 읽는 고정 사용자 경로 `~/.agents/skills`에 설치하며, OMP 로더가 XDG 계열 환경 변수를 따르지 않으므로 별도 재정의를 두지 않고 기존 `skill_roots` 설정으로만 바꾼다. OMP는 Orca의 자동 쿼터 집계 대상이 아니므로 usage unknown을 유지하고, 프로필의 `quota_groups`와 `usage set`으로만 수동 관찰한다.

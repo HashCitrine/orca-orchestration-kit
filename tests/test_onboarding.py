@@ -56,13 +56,14 @@ class OnboardingTests(unittest.TestCase):
                 result=kit.setup(self.root,{},self.state,agent)
             self.assertEqual(result['agent'],agent);self.assertIn(agent,result['prompt'])
 
-    def test_verify_opencode_and_pi_effort(self):
+    def test_verify_opencode_pi_and_omp_effort(self):
         now=datetime.now(timezone.utc)
-        kit.write_json(self.state/'setup-observation.json',{'observed_at':(now-timedelta(minutes=3)).isoformat(),'identities':{'opencode':self.identity,'pi':self.identity}})
+        kit.write_json(self.state/'setup-observation.json',{'observed_at':(now-timedelta(minutes=3)).isoformat(),'identities':{'opencode':self.identity,'pi':self.identity,'omp':self.identity}})
         config={'profiles':{
             'oc':{'agent':'opencode','model':'openai/gpt-5.4','effort':'default','effort_mode':'none'},
-            'pi':{'agent':'pi','model':'openai/gpt-5.4','effort':'high','effort_mode':'flag'}}}
-        for name,agent,effort in [('oc','opencode',None),('pi','pi','high')]:
+            'pi':{'agent':'pi','model':'openai/gpt-5.4','effort':'high','effort_mode':'flag'},
+            'omp':{'agent':'omp','model':'openai/gpt-5.4','effort':'high','effort_mode':'flag'}}}
+        for name,agent,effort in [('oc','opencode',None),('pi','pi','high'),('omp','omp','high')]:
             data=copy.deepcopy(self.data)
             data['result']['worker']['startOptions']['launch']['effective']={'agent':agent,'model':'openai/gpt-5.4','effort':effort}
             with patch.object(kit,'orca_read',return_value=data):
@@ -70,6 +71,16 @@ class OnboardingTests(unittest.TestCase):
         data['result']['worker']['startOptions']['launch']['effective']={'agent':'opencode','model':'openai/gpt-5.4','effort':'high'}
         with patch.object(kit,'orca_read',return_value=data),self.assertRaises(ValueError):
             kit.verify_profile(config,self.state,'oc','d')
+        data['result']['worker']['startOptions']['launch']['effective']={'agent':'omp','model':'openai/gpt-5.4','effort':None}
+        with patch.object(kit,'orca_read',return_value=data),self.assertRaises(ValueError):
+            kit.verify_profile(config,self.state,'omp','d')
+
+    def test_setup_omp_has_no_default_profiles(self):
+        with patch.object(kit,'probe',return_value={'available':False}),patch.object(kit,'orca_read',side_effect=ValueError('offline')),patch.object(kit.shutil,'which',return_value=None):
+            result=kit.setup(self.root,{},self.state,'omp')
+        self.assertEqual(result['profiles'],{})
+        self.assertTrue(any('기본 프로필이 없습니다' in step for step in result['next_steps']))
+        self.assertIn('omp',result['prompt'])
 
     def test_embedded_effort_and_remote_environment(self):
         now=datetime.now(timezone.utc)

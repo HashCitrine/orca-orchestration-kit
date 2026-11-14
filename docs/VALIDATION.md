@@ -140,3 +140,16 @@ Claude/AGY quota validation: 28 automated tests passed (Orca payload conversion,
 - 임시 config로 `route --candidates` 실행: opencode/pi 후보가 blocked(검증 근거 없음)로 표시되고 launch_args는 생성되지 않았다. OpenCode flag, Pi none 등 잘못된 조합은 설정 검증에서 거부됐다.
 - 로컬 설치본 갱신: 기존 Codex/Claude/AGY/Grok 스킬 디렉터리를 백업한 뒤 `kit.py install`로 6개 경로를 다시 설치했다. 이후 원격의 추가 references까지 반영한 `kit.py update` 기준으로 manifest 78개 해시가 모두 일치하고, 모든 설치본의 `scripts/kit.py`·`usage.py`가 저장소와 같다. 기존 설치본에만 있던 `worker-show --full` 수정은 소스에도 반영해 보존했다.
 - Orca 1.4.258의 `worker-start` 도움말과 앱의 agent catalog에서 `opencode`/`pi` id 및 Pi `--thinking`(effort), OpenCode 모델 선택 제약을 확인했다. 실제 OpenCode/Pi Dispatch 실행과 launch.effective 검증은 이번 변경에서 수행하지 않았다. 사용자 요청 시 `setup` 후 작은 읽기 전용 작업으로 검증한다.
+
+## OMP-001 (2026-11-14, macOS / Python 3.9.6)
+
+- 변경: Orca 작업자 id `omp`를 kit의 agent 목록, setup/doctor, 프로필 검증, 라우팅, 스킬 설치 경로, usage 처리에 추가. OMP 프로필은 `effort_mode: "flag"`만 허용하고 `--effort`가 OMP `--thinking`으로 전달된다. 기본 routing.json에는 계정별 모델을 추측해 넣지 않았다.
+- `diff -q kit.py skills/orca-team/scripts/kit.py` 및 `diff -q usage.py skills/orca-team/scripts/usage.py`: 차이 없음.
+- `TMPDIR=/private/tmp python3 -m unittest discover -s tests -v`: 65 tests, OK. 새 OMP 단언이 모두 실행됐다: `test_skill_roots`, `test_launch_and_candidates`, `test_verify_opencode_pi_and_omp_effort`, `test_setup_omp_has_no_default_profiles`, `test_refresh_extended_agents_is_unknown`. launch_args는 `--agent omp --model openai/gpt-5.4 --effort high`, 명시 override는 기본 `standard` 프로필 effort를 이어받아 `--effort medium`, effort 내장 `review` 기반에서도 `--agent omp`가 flag로 보정돼 `--effort high`였다.
+- `orca agent-context --json`: `orchestration worker-start` 노트가 "OMP also takes its model roles and selectors ..., with --effort as its thinking level"을 보고한다. Orca 1.4.258.
+- `kit.py doctor --home <temp>`: `tools.omp.available` true, `tools.omp.help_ok` true, `skill_roots.omp`가 `<temp>/.agents/skills`로 확인됐다. `XDG_CONFIG_HOME`·`CODEX_HOME`·`GROK_HOME`·`OPENCODE_CONFIG_DIR`·`PI_CODING_AGENT_DIR`를 제거한 환경에서도 OMP 경로는 변하지 않았다.
+- `kit.py setup --agent omp --home <temp>`: CLI와 Orca 연결 확인, `프로필: {}`와 "기본 프로필이 없습니다" 다음 단계를 반환했고 요청문에 `omp`가 포함됐다. 작업자는 실행하지 않았다.
+- `kit.py usage refresh --agent omp --home <temp>`: `"status":"unknown"`, `"agent":"omp"`, 사유 `automatic adapter unavailable; use manual input`.
+- `kit.py install --home <temp>`: managed_files 91, removed_files 0. 일곱 스킬 경로(Codex, Claude, AGY, Grok, OpenCode `~/.config/opencode/skills`, Pi `~/.pi/agent/skills`, OMP `~/.agents/skills`) 모두에 `orca-team/SKILL.md`가 설치됐다. 첫 시도는 `/var` 심볼릭 링크를 포함한 `mktemp -d` 경로에서 `safe_path` 충돌로 실패했고, `/private/tmp` 기반 경로에서 통과했다. 이는 기존 환경 제약이며 변경과 무관하다.
+- 로컬 설치본 갱신: `kit.py install`로 managed_files 91, removed_files 0, 사용자 파일 충돌 없음. `$HOME/.agents/skills/orca-team/SKILL.md`·`scripts/kit.py`가 저장소와 일치하고, `omp skill list --json`이 `orca-team`을 `"source":"agents:user"`로 보고한다.
+- 미실행: 실제 OMP Dispatch. 계정별 모델 선택과 bootstrap 검증이 필요하므로 이번 변경에서는 worker-start·verify-profile을 수행하지 않았고, OMP 프로필은 사용자가 검증할 때까지 blocked다.

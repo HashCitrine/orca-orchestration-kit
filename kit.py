@@ -13,7 +13,7 @@ import sys
 import usage
 
 NAME = 'orca-team'
-AGENTS = ('codex','claude','agy','grok','opencode','pi')
+AGENTS = ('codex','claude','agy','grok','opencode','pi','omp')
 AGENT_IDS = {'agy':'antigravity'}
 
 def digest(data):
@@ -37,7 +37,8 @@ def roots(home, config):
               'claude': home/'.claude/skills', 'agy': home/'.gemini/config/skills',
               'grok': Path(os.environ.get('GROK_HOME', str(home/'.grok')))/'skills',
               'opencode': Path(os.environ.get('OPENCODE_CONFIG_DIR', str(config_home/'opencode'))).expanduser()/'skills',
-              'pi': Path(os.environ.get('PI_CODING_AGENT_DIR', str(home/'.pi/agent'))).expanduser()/'skills'}
+              'pi': Path(os.environ.get('PI_CODING_AGENT_DIR', str(home/'.pi/agent'))).expanduser()/'skills',
+              'omp': home/'.agents/skills'}
     for key, value in config.get('skill_roots', {}).items():
         if key not in values:
             raise ValueError('unknown skill root: '+key)
@@ -217,8 +218,8 @@ def routing_config(config):
             raise ValueError('opencode profiles require effort_mode none: '+name)
         if p['effort_mode']=='none' and p['agent']!='opencode':
             raise ValueError('effort_mode none is only for opencode: '+name)
-        if p['agent']=='pi' and p['effort_mode']!='flag':
-            raise ValueError('pi profiles require effort_mode flag: '+name)
+        if p['agent'] in ('pi','omp') and p['effort_mode']!='flag':
+            raise ValueError(p['agent']+' profiles require effort_mode flag: '+name)
         if 'quota_groups' in p and (not isinstance(p['quota_groups'],list) or any(not isinstance(g,str) or not g for g in p['quota_groups'])):
             raise ValueError('invalid quota_groups')
         if 'require_quota' in p and (not isinstance(p['require_quota'],bool) or (p['require_quota'] and not p.get('quota_groups'))):
@@ -362,7 +363,7 @@ def route_base(config, state, task_type, complexity='normal', profile=None, mode
             if effort:
                 return {'status':'blocked','reason':'opencode does not support --effort; use a profile with effort_mode none'}
             p['effort']='default';p['effort_mode']='none'
-        elif agent=='pi' and p['effort_mode']!='flag':
+        elif agent in ('pi','omp') and p['effort_mode']!='flag':
             p['effort']=p['effort'] if p['effort'] in ('low','medium','high') else 'high'
             p['effort_mode']='flag'
         # Revalidate explicit overrides as complete profile definitions.

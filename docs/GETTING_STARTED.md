@@ -16,6 +16,7 @@
 | AGY CLI | https://antigravity.google/docs/getting-started?tab=cli | `agy --help`, `agy`를 실행하고 로그인 |
 | OpenCode CLI | `opencode --help`의 공식 안내 | `opencode --help`, `opencode auth login`으로 로그인 |
 | Pi CLI | `pi --help`의 공식 안내 | `pi --help`, `pi auth login <provider>`로 로그인 |
+| OMP CLI | `omp --help`의 공식 안내 | `omp --help`, `omp login`으로 로그인 |
 
 **성공 기준:** 사용할 CLI가 실행되고 로그인 후 간단한 요청에 응답합니다. `--help` 성공만으로 로그인 완료를 판단하지 마세요. 모델 이용 가능 여부와 과금은 자신의 계정 조건을 확인하세요.
 
@@ -35,7 +36,7 @@ CLI로 등록하려면 일반 터미널에서 실제 프로젝트 경로로 바�
 orca repo add --path /absolute/path/to/your-project --json
 ```
 
-Linux에서는 `orca`를 `orca-ide`로 바꾸고, Windows에서는 `--path "C:\work\your-project"`처럼 경로를 사용합니다. 프로젝트의 에이전트 탭에서 Claude·Codex·AGY·Grok·OpenCode·Pi 중 준비한 도구를 선택해 새 대화를 시작하세요. 앱 화면의 이름은 버전에 따라 달라질 수 있습니다.
+Linux에서는 `orca`를 `orca-ide`로 바꾸고, Windows에서는 `--path "C:\work\your-project"`처럼 경로를 사용합니다. 프로젝트의 에이전트 탭에서 Claude·Codex·AGY·Grok·OpenCode·Pi·OMP 중 준비한 도구를 선택해 새 대화를 시작하세요. 앱 화면의 이름은 버전에 따라 달라질 수 있습니다.
 
 **성공 기준:** Orca에서 대상 프로젝트와 해당 에이전트 대화가 보이고, Orca CLI 상태 조회가 연결 성공을 반환합니다. 외부의 일반 CLI 대화가 자동으로 Orca 조정자로 등록된다고 가정하지 마세요.
 
@@ -59,6 +60,7 @@ Windows PowerShell에서는 `python3` 대신 `py -3`를 사용하세요. 설치�
 | Grok | `python3 kit.py setup --agent grok` | grok-4.5·grok-4.6·grok-4.7 중 쓸 모델을 검증 |
 | OpenCode | `python3 kit.py setup --agent opencode` | `opencode models`로 확인한 로컬 프로필 추가 후 검증 |
 | Pi | `python3 kit.py setup --agent pi` | `pi --list-models`로 확인한 로컬 프로필 추가 후 검증 |
+| OMP | `python3 kit.py setup --agent omp` | `omp models`로 확인한 로컬 프로필 추가 후 검증 |
 
 `setup`은 Git, Orca 연결, 선택한 CLI, 설치된 스킬과 프로필 상태를 알려주고 다음 단계와 복사할 요청문을 출력합니다. `--json`으로 기계 판독용 결과를 받을 수 있습니다. 외부 프로그램을 설치하거나 에이전트를 시작하지는 않지만, 나중에 실행 파일을 대조할 수 있도록 로컬 `setup-observation.json`을 기록합니다.
 
@@ -95,7 +97,7 @@ python3 kit.py verify-profile --profile standard --dispatch <completed-dispatch-
 python3 kit.py route --task-type implementation --profile standard
 ```
 
-AGY·Claude는 `--profile`에 검증한 프로필 이름을 사용하세요. OpenCode·Pi는 기본 프로필이 없으므로 [프로필 운영](ROUTING.md#opencodepi-로컬-프로필)의 로컬 프로필 예시로 추가한 뒤 검증합니다. 일반 작업 유형 연결을 바꾸려면 로컬 `routes`를 명시적으로 수정합니다. 모델별로 유효한 검증이 필요하므로 하나를 검증했다고 모든 프로필이 준비되는 것은 아닙니다.
+AGY·Claude는 `--profile`에 검증한 프로필 이름을 사용하세요. OpenCode·Pi·OMP는 기본 프로필이 없으므로 [프로필 운영](ROUTING.md#opencodepiomp-로컬-프로필)의 로컬 프로필 예시로 추가한 뒤 검증합니다. 일반 작업 유형 연결을 바꾸려면 로컬 `routes`를 명시적으로 수정합니다. 모델별로 유효한 검증이 필요하므로 하나를 검증했다고 모든 프로필이 준비되는 것은 아닙니다.
 
 ## 5. 설정과 문제 해결
 
