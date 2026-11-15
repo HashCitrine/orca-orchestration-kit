@@ -1,5 +1,19 @@
 # 구현 계획
 
+## 2026-11-15: 현재 상태와 다음 작업
+
+이 섹션이 현재 우선순위이며 아래 기존 섹션은 이력이다.
+
+- [x] OMP 지원 코드·배포: `eb4e1fa`, CI 6/6 success(run 43640377796).
+- [x] OMP 실제 검증: `omp-haiku`, model `anthropic/claude-haiku-5-5`, effort `medium`, Dispatch `ctx_4a679fc9ba52`, `verify-profile` verified.
+- [ ] OpenCode·Pi 로컬 프로필 추가와 실제 검증: `omp models`/`opencode models`로 계정별 selector를 확인하고 OMP와 같은 절차(worker-start → worker-show → verify-profile)로 등록한다.
+- [ ] 만료·실행 파일 변경 기본 프로필 재검증: `light`, `standard`, `deep`, `review` 등 기본 후보가 blocked이므로 에이전트별 `setup` 후 새 Dispatch로 다시 검증한다.
+- [ ] Windows/Linux/WSL 실제 실행 검증.
+- [ ] AGY 조정자 역할과 Jev 실제 API 호출 검증.
+- [ ] Entire 1차 실증: 아래 `Entire 선택형 연동과 후속 TODO` 항목을 그대로 유지한다.
+
+실제 근거는 [검증 결과](VALIDATION.md)를 따른다.
+
 ## Entire 선택형 연동과 후속 TODO
 
 1차 범위는 스킬 지침·선택형 체크포인트 참조·로컬 보관·격리된 단일 Codex CLI 실험이다. `kit.py` 및 설정 API는 변경하지 않는다. 아래 TODO는 이번 회차에 자동 착수하지 않는다.

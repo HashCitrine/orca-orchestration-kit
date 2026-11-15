@@ -1,5 +1,17 @@
 # 진행 현황
 
+## 현재 상태 (2026-11-15)
+
+한눈에 보는 스냅샷이다. 상세 근거는 [검증 결과](VALIDATION.md), 다음 작업은 [구현 계획](PLAN.md#2026-11-15-현재-상태와-다음-작업)을 따른다.
+
+- 코드·배포: OMP 지원 커밋 `eb4e1fa`(`Support OMP worker`)가 `origin/main`에 있다. GitHub Actions run 43640377796에서 macOS/Linux/Windows × Python 3.9/3.13 6개 작업이 모두 success였고 로컬 unittest는 65개다.
+- 지원 에이전트 7종과 Orca id: Claude(`claude`), Codex(`codex`), AGY(`antigravity`), Grok(`grok`), OpenCode(`opencode`), Pi(`pi`), OMP(`omp`).
+- 스킬 설치: 7개 root에 `managed_files` 91개(7 × 13)가 설치돼 있다.
+- 검증 현황: 로컬 `model-evidence.json`은 preflight에서 12개였고 `omp-haiku` 등록 후 13개다. 여섯 작업 유형의 `route --candidates`에서 ready는 `grok-4.7` 하나이고 blocked는 14개다. OMP는 `omp-haiku`(model `anthropic/claude-haiku-5-5`, effort `medium`, `effort_mode` `flag`)를 OMP-LIVE-001에서 검증했고 Dispatch는 `ctx_4a679fc9ba52`다.
+- 사용량: Codex·Claude·AGY·Grok은 자동 집계, OpenCode·Pi·OMP는 unknown이라 `usage set`으로 수동 입력한다.
+- 미검증: Windows/Linux/WSL 실제 실행, AGY 조정자 역할, Jev 실제 API 호출, Entire 실제 세션 수집.
+- 다음 작업: [구현 계획](PLAN.md#2026-11-15-현재-상태와-다음-작업)의 2026-11-15 체크리스트를 따른다.
+
 ## 2026-11-05: Entire 선택형 연동
 
 스킬·문서·템플릿 구현 및 로컬 훅/코드 푸시 검증 완료, 실제 단일 Codex CLI 수집 실증은 미완료. Entire v0.12.2의 로컬 설정과 기존 Git 훅 연결을 독립 저장소에서 확인했고 원본·관련 전역 설정 해시가 유지됐다. 로컬 테스트 57개 및 스킬 형식 검사 통과, 아스트라 독립 8개 시나리오 검토의 문구 보강을 반영했다. 현재 Windows의 Codex 프로필 검증 근거가 없어 route가 blocked이며 usage는 unknown, Codex 훅 신뢰는 trust_review_needed다. 작업자를 실행하지 않았으므로 수집·종료 후 재조회·실제 기록 전송 억제 성공을 주장하지 않는다. [후속 TODO](PLAN.md#entire-선택형-연동과-후속-todo)에 1차 잔여와 다음 회차 범위를 구분했다.
@@ -111,5 +123,5 @@ in_progress: 작업별 승인 후보 조회·선택, Claude 프로필과 구독 
 ## OMP-001 (2026-11-14)
 
 현재: 소스에 Orca 작업자 id `omp` 지원을 추가했다. OMP는 계정별 모델 차이 때문에 기본 routing.json 프로필을 두지 않고 로컬 `profiles`/`candidates`로 승인한다. effort는 flag만 허용하고 `--effort`가 OMP `--thinking`으로 전달되며, 스킬은 OMP가 읽는 `~/.agents/skills`에 설치한다. usage는 자동 집계가 없어 unknown으로 둔다.
-검증: `TMPDIR=/private/tmp python3 -m unittest discover -s tests` 65개 통과. `kit.py doctor`, `setup --agent omp`, `usage refresh --agent omp`, `kit.py install`(managed_files 91, removed_files 0)로 일곱 설치 경로와 OMP 스킬 인식을 확인했다. 실제 OMP Dispatch 검증은 아직 수행하지 않았다.
+검증: `TMPDIR=/private/tmp python3 -m unittest discover -s tests` 65개 통과. `kit.py doctor`, `setup --agent omp`, `usage refresh --agent omp`, `kit.py install`(managed_files 91, removed_files 0)로 일곱 설치 경로와 OMP 스킬 인식을 확인했다. 실제 OMP Dispatch 검증은 OMP-LIVE-001에서 `omp-haiku`로 수행했다.
 다음: `setup --agent omp` 후 `omp models`로 실제 모델 selector를 확인해 로컬 프로필을 추가하고, 작은 읽기 전용 Dispatch 성공 시 `verify-profile`로 등록한다.

@@ -152,4 +152,18 @@ Claude/AGY quota validation: 28 automated tests passed (Orca payload conversion,
 - `kit.py usage refresh --agent omp --home <temp>`: `"status":"unknown"`, `"agent":"omp"`, 사유 `automatic adapter unavailable; use manual input`.
 - `kit.py install --home <temp>`: managed_files 91, removed_files 0. 일곱 스킬 경로(Codex, Claude, AGY, Grok, OpenCode `~/.config/opencode/skills`, Pi `~/.pi/agent/skills`, OMP `~/.agents/skills`) 모두에 `orca-team/SKILL.md`가 설치됐다. 첫 시도는 `/var` 심볼릭 링크를 포함한 `mktemp -d` 경로에서 `safe_path` 충돌로 실패했고, `/private/tmp` 기반 경로에서 통과했다. 이는 기존 환경 제약이며 변경과 무관하다.
 - 로컬 설치본 갱신: `kit.py install`로 managed_files 91, removed_files 0, 사용자 파일 충돌 없음. `$HOME/.agents/skills/orca-team/SKILL.md`·`scripts/kit.py`가 저장소와 일치하고, `omp skill list --json`이 `orca-team`을 `"source":"agents:user"`로 보고한다.
-- 미실행: 실제 OMP Dispatch. 계정별 모델 선택과 bootstrap 검증이 필요하므로 이번 변경에서는 worker-start·verify-profile을 수행하지 않았고, OMP 프로필은 사용자가 검증할 때까지 blocked다.
+- 당시 미실행: 실제 OMP Dispatch. 계정별 모델 선택과 bootstrap 검증이 필요해 이번 변경에서는 worker-start·verify-profile을 수행하지 않았고, OMP 프로필은 사용자 검증 전까지 blocked였다. 2026-11-15 OMP-LIVE-001에서 `omp-haiku`로 수행했다.
+
+## OMP-LIVE-001 (2026-11-15, macOS / Python 3.9.6)
+
+- 로컬 프로필: `omp-haiku` = agent `omp`, model `anthropic/claude-haiku-5-5`, effort `medium`, `effort_mode` `flag`. 계정별 모델 차이 때문에 `routing.json`과 후보(`candidates`)에는 넣지 않았고 저장소 파일은 변경하지 않았다.
+- `kit.py setup --agent omp --json`: `profiles`가 `{"omp-haiku":"blocked"}`, `checks`가 python 3.9.6·git·orca_connected·agent_cli·skill_installed 모두 true. `setup-observation.json`의 `identities.omp`가 현재 실행 파일(`/Users/tmkim/.local/bin/omp`, size 224277648, mtime_ns 1794753191508426769)과 일치한다.
+- 검증 전 `kit.py route --task-type implementation --profile omp-haiku --json`: `status` blocked, `rejected[0].reason`은 `missing, stale, or changed-runtime smoke-test evidence`였다. 이 상태에서 라우팅으로 작업자를 시작하지 않았다.
+- 첫 Dispatch `ctx_e7a09b91c070`: worker_done succeeded, `worker-show`에서 `dispatch.status` completed·`worker.state` succeeded·`hostScope.kind` local이었고 `launch.effective`도 요청과 같았다. 그러나 `verify-profile`이 `작업 전 setup 기록과 현재 실행 파일이 일치해야 합니다`로 실패했다. setup 이후 OMP 실행 파일이 바뀐 것이 원인이었다(size 223369360 → 224277648, mtime_ns 1794584505794002030 → 1794753191508426769). evidence를 고치지 않고 `setup --agent omp`를 다시 실행한 뒤 새 Dispatch로 재검증했다.
+- 두 번째 Dispatch `ctx_4a679fc9ba52`(task `task_4595d163b7e7`, run `run_7525dad8ba31`, terminal `term_32b21b0f-bb99-472d-b40c-8449090a54c2`): `check --wait`가 `worker_done`(`outcome` succeeded, subject `routes mapping reported`)을 받았고 `worker-show --full`에서 `dispatch.status` completed(completedAt 2026-11-15T14:33:46.108Z), `worker.state` succeeded, `hostScope` local/local이었다.
+- `launch.effective`: `{"agent":"omp","model":"anthropic/claude-haiku-5-5","effort":"medium"}`로 요청과 정확히 같았다.
+- `verify-profile --profile omp-haiku --dispatch ctx_4a679fc9ba52`: `status` verified, `changed` true, `verified_at` 2026-11-15T14:33:46.108000+00:00. evidence key는 `omp|anthropic/claude-haiku-5-5|medium|flag`이고 `dispatch_id`, `actual_model` `anthropic/claude-haiku-5-5`, `actual_effort` medium, `runtime_id` 8318e744-6f21-4290-9f62-e360b60da139, identity를 담는다.
+- `worker-release`: 두 Dispatch 모두 `state` released, `processAction` closed_agent_terminal, `archive` transcript captured.
+- 사후 `route --task-type implementation --profile omp-haiku --json`: `status` ready, `launch_args` `["--agent","omp","--model","anthropic/claude-haiku-5-5","--effort","medium"]`.
+- 작업자는 안내한 `routing.json`만 읽었고 저장소 파일을 바꾸지 않았다(`git status --short` 비어 있음). 여섯 작업 유형의 `route --candidates`는 여전히 ready `grok-4.7` 하나·blocked 14개다.
+- `TMPDIR=/private/tmp python3 -m unittest discover -s tests -v`: 65 tests, OK.
